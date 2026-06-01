@@ -1,11 +1,19 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EOSWOS</title>
 
     <style>
+        :root {
+            --streamlit-footer-crop: 42px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         html,
         body {
             margin: 0;
@@ -16,26 +24,35 @@
             background: #ffffff;
         }
 
-        .app-container {
+        .app-frame-wrap {
+            position: fixed;
+            inset: 0;
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             overflow: hidden;
+            background: #ffffff;
         }
 
-        iframe {
+        .app-frame-wrap iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 100%;
-            border: none;
+            height: calc(100% + var(--streamlit-footer-crop));
+            border: 0;
             display: block;
+            background: #ffffff;
         }
     </style>
 </head>
 
 <body>
-    <div class="app-container">
+    <div class="app-frame-wrap">
         <iframe
-            src="https://eoswos.streamlit.app/?embed=true&embed_options=hide_toolbar"
-            allowfullscreen>
+            src="https://eoswos.streamlit.app/?embed=true&embed_options=hide_loading_screen"
+            allowfullscreen
+            loading="eager">
         </iframe>
     </div>
 </body>
