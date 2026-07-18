@@ -56,18 +56,12 @@
         </iframe>
     </div>
 
-    <!-- GoatCounter 방문자 카운터 위젯 -->
-    <div style="position: fixed; bottom: 8px; right: 8px; z-index: 9999; font-family: sans-serif; font-size: 13px; background: rgba(255,255,255,0.85); padding: 4px 10px; border-radius: 6px;">
-      Hits: <span id="visit-count">-</span>
+    <!-- hits.sh 뱃지 -->
+    <div style="position: fixed; bottom: 8px; right: 8px; z-index: 9999;">
+      <a href="https://hits.sh/eoswos.com/" target="_blank">
+        <img src="https://hits.sh/eoswos.com.svg" alt="Hits"/>
+      </a>
     </div>
-    <script>
-      var r = new XMLHttpRequest();
-      r.addEventListener('load', function() {
-        document.querySelector('#visit-count').innerText = JSON.parse(this.responseText).count;
-      });
-      r.open('GET', 'https://eoswos.goatcounter.com/counter/TOTAL.json');
-      r.send();
-    </script>
     
     <!-- GoatCounter -->
     <script data-goatcounter="https://eoswos.goatcounter.com/count"
