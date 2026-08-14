@@ -8,6 +8,9 @@
     panel.setAttribute("aria-label", "EOSWOS AI 메자닌 단건평가");
     panel.setAttribute("aria-hidden", "true");
     panel.innerHTML = [
+        '<button id="ai-panel-close" class="ai-panel-close" type="button" aria-label="AI 단건평가 닫기" title="닫기">',
+        '<span aria-hidden="true">&times;</span>',
+        '</button>',
         '<div id="ai-panel-loading" class="ai-panel-loading">AI 평가 화면을 불러오는 중입니다.</div>',
         '<iframe id="ai-evaluation-frame"',
         ' title="EOSWOS AI 메자닌 단건평가"',
@@ -37,6 +40,7 @@
 
     const frame = document.getElementById("ai-evaluation-frame");
     const loading = document.getElementById("ai-panel-loading");
+    const closeButton = document.getElementById("ai-panel-close");
 
     function setPanelOpen(open) {
         launcher.setAttribute("aria-expanded", String(open));
@@ -51,6 +55,11 @@
 
     launcher.addEventListener("click", function () {
         setPanelOpen(launcher.getAttribute("aria-expanded") !== "true");
+    });
+
+    closeButton.addEventListener("click", function () {
+        setPanelOpen(false);
+        launcher.focus();
     });
 
     frame.addEventListener("load", function () {
