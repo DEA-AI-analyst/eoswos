@@ -42,6 +42,10 @@ st.markdown(
         }
         h1, h2, h3 { letter-spacing: 0 !important; }
         [data-testid="stAppViewContainer"] { background: #f7f9fc; }
+        footer,
+        [data-testid="stFooter"] {
+            display: none !important;
+        }
         [data-testid="stChatMessage"] {
             border: 1px solid #e2e7ef;
             border-radius: 8px;
