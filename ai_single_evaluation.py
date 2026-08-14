@@ -69,26 +69,13 @@ st.markdown(
             font-size: 0.78rem;
             font-weight: 600;
         }
-        .condition-summary {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.5rem 0.8rem;
-            margin: 0.65rem 0 0.8rem;
-            padding: 0.8rem;
-            border: 1px solid #dce3ed;
-            border-radius: 8px;
-            background: #f8fafc;
-        }
-        .condition-summary div,
         .result-summary div { min-width: 0; }
-        .condition-summary span,
         .result-summary span {
             display: block;
             color: #667085;
             font-size: 0.72rem;
             line-height: 1.35;
         }
-        .condition-summary strong,
         .result-summary strong {
             display: block;
             overflow-wrap: anywhere;
@@ -122,7 +109,6 @@ st.markdown(
                 padding-left: 0.65rem;
             }
             .chat-title strong { font-size: 1.2rem; }
-            .condition-summary { grid-template-columns: 1fr; }
         }
     </style>
     """,
@@ -296,29 +282,6 @@ def _render_message(message: dict[str, Any]) -> None:
             st.markdown(str(message.get("content") or ""))
 
 
-def _summary_html(values: dict[str, Any]) -> str:
-    call_rate = values.get("call_rate")
-    call_display = "-" if call_rate is None else f"{float(call_rate) * 100:.2f}%"
-    maturity = values.get("ttm_years")
-    maturity_display = "-" if maturity is None else f"{float(maturity):g}년"
-    conversion = values.get("conversion_price")
-    conversion_display = "-" if conversion is None else f"{int(conversion):,}원"
-    fields = (
-        ("상품유형", values.get("product_type")),
-        ("발행회사 종목코드", values.get("issuer_stock_code")),
-        ("기초자산 종목코드", values.get("stock_code")),
-        ("신용등급", values.get("credit_rating")),
-        ("전환/행사/교환가액", conversion_display),
-        ("Call rate", call_display),
-        ("잔존만기", maturity_display),
-        ("발행일", values.get("issue_date")),
-    )
-    items = "".join(
-        f"<div><span>{_escape(label)}</span><strong>{_escape(value)}</strong></div>"
-        for label, value in fields
-    )
-    return f'<div class="condition-summary">{items}</div>'
-
 
 def _missing_message(fields: list[str]) -> str:
     if fields == ["product_type"]:
@@ -349,7 +312,7 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
         if exc.fields:
             detail = f"{detail} 확인 항목: {', '.join(exc.fields)}"
         _append_message("assistant", detail, kind="error")
-        st.session_state["chat_stage"] = "confirming"
+        st.session_state["chat_stage"] = "collecting"
 
 
 st.markdown(
@@ -388,30 +351,10 @@ for chat_message in st.session_state["chat_messages"]:
     _render_message(chat_message)
 
 stage = st.session_state.get("chat_stage")
-draft = dict(st.session_state.get("evaluation_draft") or {})
 
 if stage == "confirming":
-    with st.chat_message("assistant"):
-        st.markdown("아래 조건으로 평가할까요?")
-        st.markdown(_summary_html(draft), unsafe_allow_html=True)
-        action_columns = st.columns(2)
-        run_clicked = action_columns[0].button(
-            "평가 실행",
-            type="primary",
-            icon=":material/analytics:",
-            use_container_width=True,
-        )
-        reset_clicked = action_columns[1].button(
-            "다시 입력",
-            icon=":material/refresh:",
-            use_container_width=True,
-        )
-    if run_clicked:
-        _run_evaluation(client, today_seoul)
-        st.rerun()
-    if reset_clicked:
-        _reset_conversation()
-        st.rerun()
+    _run_evaluation(client, today_seoul)
+    st.rerun()
 
 if stage == "complete":
     if st.button("새 평가", icon=":material/add:", use_container_width=True):
@@ -436,10 +379,14 @@ if prompt:
     elif outcome.reset:
         _reset_conversation()
     elif outcome.confirm:
-        if st.session_state.get("chat_stage") == "confirming":
-            _run_evaluation(client, today_seoul)
+        missing = missing_fields(current_draft)
+        errors = validate_draft(current_draft, today=today_seoul) if not missing else []
+        if missing:
+            _append_message("assistant", _missing_message(missing))
+        elif errors:
+            _append_message("assistant", " ".join(errors), kind="error")
         else:
-            _append_message("assistant", "먼저 평가조건을 알려주세요.")
+            _run_evaluation(client, today_seoul)
     elif not outcome.updates:
         _append_message(
             "assistant",
@@ -468,6 +415,6 @@ if prompt:
                 st.session_state["chat_stage"] = "collecting"
                 _append_message("assistant", " ".join(errors), kind="error")
             else:
-                st.session_state["chat_stage"] = "confirming"
+                _run_evaluation(client, today_seoul)
 
     st.rerun()
