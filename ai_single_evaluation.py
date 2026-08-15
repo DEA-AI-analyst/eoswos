@@ -5,9 +5,11 @@ from __future__ import annotations
 import html
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import streamlit as st
 
 from mezz_api_client import (
@@ -32,6 +34,71 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed",
 )
+
+APP_DIR = Path(__file__).resolve().parent
+CODE_PATH = APP_DIR / "code.xlsx"
+
+
+@st.cache_data(show_spinner=False)
+def _load_issuer_options(
+    path_text: str,
+    modified_ns: int,
+) -> tuple[tuple[str, str], ...]:
+    del modified_ns
+    frame = pd.read_excel(path_text, sheet_name=0, dtype=str)
+    frame.columns = [str(column).strip() for column in frame.columns]
+
+    normalized_columns = {column.lower(): column for column in frame.columns}
+    code_col = next(
+        (
+            normalized_columns[name.lower()]
+            for name in ("stock_code", "Stock_code", "종목코드", "단축코드")
+            if name.lower() in normalized_columns
+        ),
+        None,
+    )
+    name_col = next(
+        (
+            normalized_columns[name.lower()]
+            for name in ("한글 종목약명", "회사명", "기업명", "종목명", "Company", "Name")
+            if name.lower() in normalized_columns
+        ),
+        None,
+    )
+    if code_col is None:
+        return ()
+
+    options: list[tuple[str, str]] = []
+    seen_codes: set[str] = set()
+    for _, row in frame.iterrows():
+        raw_code = str(row.get(code_col, "") or "").strip()
+        if raw_code.lower() == "nan":
+            continue
+        if raw_code.endswith(".0"):
+            raw_code = raw_code[:-2]
+        if not raw_code.isdigit():
+            continue
+        stock_code = raw_code.zfill(6)
+        if len(stock_code) != 6 or stock_code in seen_codes:
+            continue
+
+        raw_name = str(row.get(name_col, "") or "").strip() if name_col else ""
+        company_name = "" if raw_name.lower() == "nan" else raw_name
+        label = f"{company_name} | {stock_code}" if company_name else stock_code
+        options.append((label, stock_code))
+        seen_codes.add(stock_code)
+
+    return tuple(sorted(options, key=lambda item: (item[0], item[1])))
+
+
+def _issuer_options() -> tuple[tuple[str, str], ...]:
+    if not CODE_PATH.exists():
+        return ()
+    try:
+        return _load_issuer_options(str(CODE_PATH), CODE_PATH.stat().st_mtime_ns)
+    except Exception:
+        return ()
+
 
 st.markdown(
     """
@@ -255,12 +322,15 @@ def _ensure_session() -> None:
         st.session_state["evaluation_draft"] = {}
     if "chat_stage" not in st.session_state:
         st.session_state["chat_stage"] = "collecting"
+    if "panel_mode" not in st.session_state:
+        st.session_state["panel_mode"] = None
 
 
 def _reset_conversation() -> None:
     st.session_state["chat_messages"] = _initial_messages()
     st.session_state["evaluation_draft"] = {}
     st.session_state["chat_stage"] = "collecting"
+    st.session_state["panel_mode"] = None
 
 
 def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -> None:
@@ -336,6 +406,9 @@ def _direct_submission_message(draft: dict[str, Any]) -> str:
 
 
 def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
+    issuer_options = _issuer_options()
+    issuer_labels = {code: label for label, code in issuer_options}
+
     product_type = st.segmented_control(
         "상품유형",
         options=(SELF_STOCK_PRODUCT, THIRD_PARTY_PRODUCT),
@@ -351,28 +424,38 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
     with st.form("direct_evaluation_form", clear_on_submit=False, border=True):
         code_left, code_right = st.columns(2)
         with code_left:
-            issuer_stock_code = st.text_input(
-                "발행회사 종목코드",
-                max_chars=6,
-                placeholder="6자리 숫자",
-                key="direct_issuer_stock_code",
+            issuer_stock_code = st.selectbox(
+                "발행사 종목코드",
+                options=[code for _, code in issuer_options],
+                index=None,
+                placeholder="회사명 또는 종목코드 선택",
+                format_func=lambda value: issuer_labels.get(value, value),
+                key="direct_issuer_stock_code_select_v2",
+                disabled=not issuer_options,
             )
+            if not issuer_options:
+                st.caption("종목 목록을 불러올 수 없습니다.")
         with code_right:
             if is_self_stock:
-                st.text_input(
+                st.selectbox(
                     "기초자산 종목코드",
-                    value="",
-                    placeholder="발행회사와 동일",
+                    options=[code for _, code in issuer_options],
+                    index=None,
+                    placeholder="발행사와 동일",
+                    format_func=lambda value: issuer_labels.get(value, value),
                     disabled=True,
-                    key="direct_stock_code_locked",
+                    key="direct_stock_code_locked_select_v2",
                 )
                 stock_code = issuer_stock_code
             else:
-                stock_code = st.text_input(
+                stock_code = st.selectbox(
                     "기초자산 종목코드",
-                    max_chars=6,
-                    placeholder="6자리 숫자",
-                    key="direct_stock_code",
+                    options=[code for _, code in issuer_options],
+                    index=None,
+                    placeholder="회사명 또는 종목코드 선택",
+                    format_func=lambda value: issuer_labels.get(value, value),
+                    key="direct_stock_code_select_v2",
+                    disabled=not issuer_options,
                 )
 
         rating_col, price_col = st.columns(2)
@@ -388,7 +471,7 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
                 "전환/행사/교환가액",
                 min_value=1,
                 value=None,
-                step=1,
+                step=10,
                 placeholder="금액 입력",
                 key="direct_conversion_price",
             )
@@ -410,7 +493,7 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
                 min_value=0.0,
                 max_value=5.0,
                 value=5.0,
-                step=0.1,
+                step=0.25,
                 format="%.2f",
                 key="direct_ttm_years",
             )
@@ -506,15 +589,30 @@ if stage == "complete":
         _reset_conversation()
         st.rerun()
 
-input_mode = None
+input_mode = st.session_state.get("panel_mode")
 if stage != "complete":
-    input_mode = st.segmented_control(
-        "기능 선택",
-        options=("메자닌 평가", "자연어 질의"),
-        default="메자닌 평가",
-        key="evaluation_input_mode",
-        label_visibility="collapsed",
-    )
+    evaluation_col, chat_col = st.columns(2, gap="small")
+    with evaluation_col:
+        if st.button(
+            "메자닌 평가",
+            icon=":material/analytics:",
+            type="primary" if input_mode == "메자닌 평가" else "secondary",
+            use_container_width=True,
+            key="open_evaluation_mode",
+        ):
+            st.session_state["panel_mode"] = "메자닌 평가"
+            st.rerun()
+    with chat_col:
+        if st.button(
+            "자연어 질의",
+            icon=":material/chat:",
+            type="primary" if input_mode == "자연어 질의" else "secondary",
+            use_container_width=True,
+            key="open_chat_mode",
+        ):
+            st.session_state["panel_mode"] = "자연어 질의"
+            st.rerun()
+
     if input_mode == "메자닌 평가":
         _render_direct_input(client, today_seoul)
 
