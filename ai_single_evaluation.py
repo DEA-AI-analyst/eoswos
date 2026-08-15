@@ -388,11 +388,10 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
 
 
 def _direct_submission_message(draft: dict[str, Any]) -> str:
-    product_label = (
-        "CB / BW / EB(자기주식)"
-        if draft.get("product_type") == SELF_STOCK_PRODUCT
-        else THIRD_PARTY_PRODUCT
-    )
+    product_label = {
+        SELF_STOCK_PRODUCT: "CB / BW / EB(자기주식)",
+        THIRD_PARTY_PRODUCT: THIRD_PARTY_PRODUCT,
+    }.get(draft.get("product_type"), "-")
     return (
         f"**{product_label} 직접입력**  \n"
         f"발행회사 `{draft.get('issuer_stock_code') or '-'}` · "
@@ -412,14 +411,14 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
     product_type = st.segmented_control(
         "상품유형",
         options=(SELF_STOCK_PRODUCT, THIRD_PARTY_PRODUCT),
-        default=SELF_STOCK_PRODUCT,
+        default=None,
         format_func=lambda value: (
             "CB / BW / EB(자기주식)" if value == SELF_STOCK_PRODUCT else value
         ),
         key="direct_product_type",
     )
-    product_type = product_type or SELF_STOCK_PRODUCT
     is_self_stock = product_type == SELF_STOCK_PRODUCT
+    is_third_party = product_type == THIRD_PARTY_PRODUCT
 
     with st.form("direct_evaluation_form", clear_on_submit=False, border=True):
         code_left, code_right = st.columns(2)
@@ -436,17 +435,21 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
             if not issuer_options:
                 st.caption("종목 목록을 불러올 수 없습니다.")
         with code_right:
-            if is_self_stock:
+            if not is_third_party:
                 st.selectbox(
                     "기초자산 종목코드",
                     options=[code for _, code in issuer_options],
                     index=None,
-                    placeholder="발행사와 동일",
+                    placeholder=(
+                        "발행사와 동일"
+                        if is_self_stock
+                        else "상품유형을 먼저 선택"
+                    ),
                     format_func=lambda value: issuer_labels.get(value, value),
                     disabled=True,
                     key="direct_stock_code_locked_select_v2",
                 )
-                stock_code = issuer_stock_code
+                stock_code = issuer_stock_code if is_self_stock else None
             else:
                 stock_code = st.selectbox(
                     "기초자산 종목코드",
@@ -463,7 +466,8 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
             credit_rating = st.selectbox(
                 "신용등급",
                 options=CREDIT_RATINGS,
-                index=CREDIT_RATINGS.index("AA-"),
+                index=None,
+                placeholder="신용등급 선택",
                 key="direct_credit_rating",
             )
         with price_col:
@@ -482,9 +486,10 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
                 "Call rate",
                 min_value=0.0,
                 max_value=1.0,
-                value=0.0,
+                value=None,
                 step=0.01,
                 format="%.2f",
+                placeholder="Call rate 입력",
                 key="direct_call_rate",
             )
         with maturity_col:
@@ -492,15 +497,16 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
                 "잔존만기(년)",
                 min_value=0.0,
                 max_value=5.0,
-                value=5.0,
+                value=None,
                 step=0.25,
                 format="%.2f",
+                placeholder="잔존만기 입력",
                 key="direct_ttm_years",
             )
 
         issue_date = st.date_input(
             "발행일",
-            value=today_seoul,
+            value=None,
             max_value=today_seoul,
             format="YYYY-MM-DD",
             key="direct_issue_date",
@@ -524,7 +530,7 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
         "conversion_price": conversion_price,
         "call_rate": call_rate,
         "ttm_years": ttm_years,
-        "issue_date": issue_date.isoformat(),
+        "issue_date": issue_date.isoformat() if issue_date else None,
     }
     st.session_state["evaluation_draft"] = draft
     _append_message("user", _direct_submission_message(draft))
@@ -591,7 +597,7 @@ if stage == "complete":
 
 input_mode = st.session_state.get("panel_mode")
 if stage != "complete":
-    evaluation_col, chat_col = st.columns(2, gap="small")
+    evaluation_col, chat_col, temp_col = st.columns(3, gap="small")
     with evaluation_col:
         if st.button(
             "메자닌 평가",
@@ -611,6 +617,16 @@ if stage != "complete":
             key="open_chat_mode",
         ):
             st.session_state["panel_mode"] = "자연어 질의"
+            st.rerun()
+    with temp_col:
+        if st.button(
+            "Temp",
+            icon=":material/widgets:",
+            type="primary" if input_mode == "Temp" else "secondary",
+            use_container_width=True,
+            key="open_temp_mode",
+        ):
+            st.session_state["panel_mode"] = "Temp"
             st.rerun()
 
     if input_mode == "메자닌 평가":
