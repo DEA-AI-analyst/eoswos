@@ -28,7 +28,7 @@ from mezz_chat_parser import (
 
 
 st.set_page_config(
-    page_title="EOSWOS AI 단건평가",
+    page_title="EosWos AI 단건평가",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -243,10 +243,7 @@ def _initial_messages() -> list[dict[str, Any]]:
         {
             "role": "assistant",
             "kind": "text",
-            "content": (
-                "안녕하세요. 평가할 메자닌 조건을 알려주세요.\n\n"
-                "Ex) CB / 현대건설 / 000720 / AA- / 전환가 150607 / 콜 0.0 / 만기 5년 / 발행일 2026-07-07"
-            ),
+            "content": "안녕하세요. EosWos AI입니다. 무엇을 도와드릴까요?",
         }
     ]
 
@@ -466,7 +463,7 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
 st.markdown(
     """
     <div class="chat-title">
-        <strong>EOSWOS AI</strong>
+        <strong>EosWos AI</strong>
         <span>메자닌 신규업체 단건평가</span>
     </div>
     """,
@@ -512,17 +509,18 @@ if stage == "complete":
 input_mode = None
 if stage != "complete":
     input_mode = st.segmented_control(
-        "입력 방식",
-        options=("직접 입력", "자연어 입력"),
-        default="직접 입력",
+        "기능 선택",
+        options=("메자닌 평가", "자연어 질의"),
+        default="메자닌 평가",
         key="evaluation_input_mode",
+        label_visibility="collapsed",
     )
-    if input_mode == "직접 입력":
+    if input_mode == "메자닌 평가":
         _render_direct_input(client, today_seoul)
 
 prompt = (
-    st.chat_input("평가 조건을 자연어로 입력해 주세요.")
-    if input_mode == "자연어 입력"
+    st.chat_input("질문을 입력해 주세요.")
+    if input_mode == "자연어 질의"
     else None
 )
 if prompt:
