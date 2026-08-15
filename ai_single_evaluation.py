@@ -264,7 +264,10 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
     s_m = selected.get("s_m", {}) if isinstance(selected, dict) else {}
 
     st.markdown(f"**{company} · `{stock_code}` 평가가 완료되었습니다.**")
-    st.caption(f"요청 처리 {elapsed_ms / 1000.0:.2f}초")
+    st.caption(
+        f"요청 처리 {elapsed_ms / 1000.0:.2f}초 · "
+        "신속한 조회와 상세한 결과가 필요하신 분은 웹사이트 단건조회를 이용하세요."
+    )
     st.markdown(
         f"""
         <div class="result-summary">
@@ -656,7 +659,7 @@ if stage != "complete":
 
 prompt = (
     st.chat_input("질문을 입력해 주세요.")
-    if input_mode == "자연어 질의"
+    if input_mode in {"자연어 질의", "Temp"}
     else None
 )
 if prompt:
