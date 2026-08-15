@@ -120,6 +120,28 @@ st.markdown(
             background: #ffffff;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
+        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 0.4rem !important;
+        }
+        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode)
+        > [data-testid="stColumn"] {
+            flex: 1 1 0 !important;
+            width: 0 !important;
+            min-width: 0 !important;
+        }
+        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) button {
+            min-width: 0 !important;
+            height: 2.5rem;
+            padding-right: 0.35rem !important;
+            padding-left: 0.35rem !important;
+        }
+        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode)
+        button [data-testid="stMarkdownContainer"] p {
+            white-space: nowrap;
+            font-size: 0.78rem;
+        }
         .chat-title {
             padding: 0.25rem 0 0.1rem;
         }
