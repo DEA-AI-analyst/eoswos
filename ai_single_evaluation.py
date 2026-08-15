@@ -243,7 +243,7 @@ def _initial_messages() -> list[dict[str, Any]]:
             "role": "assistant",
             "kind": "text",
             "content": (
-                "안녕하세요. 평가할 메자닌 조건을 알려주세요. "
+                "안녕하세요. 평가할 메자닌 조건을 알려주세요.\n\n"
                 "Ex) CB / 현대건설 / 000720 / AA- / 전환가 150607 / 콜 0.0 / 만기 5년 / 발행일 2026-07-07"
             ),
         }
