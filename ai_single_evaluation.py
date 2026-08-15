@@ -16,6 +16,7 @@ from mezz_api_client import (
     MezzApiError,
 )
 from mezz_chat_parser import (
+    CREDIT_RATINGS,
     FIELD_LABELS,
     SELF_STOCK_PRODUCT,
     THIRD_PARTY_PRODUCT,
@@ -319,6 +320,149 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
         st.session_state["chat_stage"] = "collecting"
 
 
+def _direct_submission_message(draft: dict[str, Any]) -> str:
+    product_label = (
+        "CB / BW / EB(자기주식)"
+        if draft.get("product_type") == SELF_STOCK_PRODUCT
+        else THIRD_PARTY_PRODUCT
+    )
+    return (
+        f"**{product_label} 직접입력**  \n"
+        f"발행회사 `{draft.get('issuer_stock_code') or '-'}` · "
+        f"기초자산 `{draft.get('stock_code') or '-'}` · "
+        f"신용등급 `{draft.get('credit_rating') or '-'}`  \n"
+        f"전환/행사/교환가액 `{draft.get('conversion_price') or '-'}` · "
+        f"Call rate `{draft.get('call_rate')}` · "
+        f"잔존만기 `{draft.get('ttm_years')}년` · "
+        f"발행일 `{draft.get('issue_date') or '-'}`"
+    )
+
+
+def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
+    product_type = st.segmented_control(
+        "상품유형",
+        options=(SELF_STOCK_PRODUCT, THIRD_PARTY_PRODUCT),
+        default=SELF_STOCK_PRODUCT,
+        format_func=lambda value: (
+            "CB / BW / EB(자기주식)" if value == SELF_STOCK_PRODUCT else value
+        ),
+        key="direct_product_type",
+    )
+    product_type = product_type or SELF_STOCK_PRODUCT
+    is_self_stock = product_type == SELF_STOCK_PRODUCT
+
+    with st.form("direct_evaluation_form", clear_on_submit=False, border=True):
+        code_left, code_right = st.columns(2)
+        with code_left:
+            issuer_stock_code = st.text_input(
+                "발행회사 종목코드",
+                max_chars=6,
+                placeholder="6자리 숫자",
+                key="direct_issuer_stock_code",
+            )
+        with code_right:
+            if is_self_stock:
+                st.text_input(
+                    "기초자산 종목코드",
+                    value="",
+                    placeholder="발행회사와 동일",
+                    disabled=True,
+                    key="direct_stock_code_locked",
+                )
+                stock_code = issuer_stock_code
+            else:
+                stock_code = st.text_input(
+                    "기초자산 종목코드",
+                    max_chars=6,
+                    placeholder="6자리 숫자",
+                    key="direct_stock_code",
+                )
+
+        rating_col, price_col = st.columns(2)
+        with rating_col:
+            credit_rating = st.selectbox(
+                "신용등급",
+                options=CREDIT_RATINGS,
+                index=CREDIT_RATINGS.index("AA-"),
+                key="direct_credit_rating",
+            )
+        with price_col:
+            conversion_price = st.number_input(
+                "전환/행사/교환가액",
+                min_value=1,
+                value=None,
+                step=1,
+                placeholder="금액 입력",
+                key="direct_conversion_price",
+            )
+
+        call_col, maturity_col = st.columns(2)
+        with call_col:
+            call_rate = st.number_input(
+                "Call rate",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.0,
+                step=0.01,
+                format="%.2f",
+                key="direct_call_rate",
+            )
+        with maturity_col:
+            ttm_years = st.number_input(
+                "잔존만기(년)",
+                min_value=0.0,
+                max_value=5.0,
+                value=5.0,
+                step=0.1,
+                format="%.2f",
+                key="direct_ttm_years",
+            )
+
+        issue_date = st.date_input(
+            "발행일",
+            value=today_seoul,
+            max_value=today_seoul,
+            format="YYYY-MM-DD",
+            key="direct_issue_date",
+        )
+        submitted = st.form_submit_button(
+            "평가시작",
+            icon=":material/analytics:",
+            use_container_width=True,
+        )
+
+    if not submitted:
+        return
+
+    issuer_stock_code = str(issuer_stock_code or "").strip()
+    stock_code = issuer_stock_code if is_self_stock else str(stock_code or "").strip()
+    draft = {
+        "product_type": product_type,
+        "issuer_stock_code": issuer_stock_code,
+        "stock_code": stock_code,
+        "credit_rating": credit_rating,
+        "conversion_price": conversion_price,
+        "call_rate": call_rate,
+        "ttm_years": ttm_years,
+        "issue_date": issue_date.isoformat(),
+    }
+    st.session_state["evaluation_draft"] = draft
+    _append_message("user", _direct_submission_message(draft))
+
+    missing = missing_fields(draft)
+    if missing:
+        st.session_state["chat_stage"] = "collecting"
+        _append_message("assistant", _missing_message(missing))
+    else:
+        errors = validate_draft(draft, today=today_seoul)
+        if errors:
+            st.session_state["chat_stage"] = "collecting"
+            _append_message("assistant", " ".join(errors), kind="error")
+        else:
+            _run_evaluation(client, today_seoul)
+    st.rerun()
+
+
 st.markdown(
     """
     <div class="chat-title">
@@ -365,7 +509,22 @@ if stage == "complete":
         _reset_conversation()
         st.rerun()
 
-prompt = st.chat_input("평가 조건을 자연어로 입력해 주세요.")
+input_mode = None
+if stage != "complete":
+    input_mode = st.segmented_control(
+        "입력 방식",
+        options=("직접 입력", "자연어 입력"),
+        default="직접 입력",
+        key="evaluation_input_mode",
+    )
+    if input_mode == "직접 입력":
+        _render_direct_input(client, today_seoul)
+
+prompt = (
+    st.chat_input("평가 조건을 자연어로 입력해 주세요.")
+    if input_mode == "자연어 입력"
+    else None
+)
 if prompt:
     _append_message("user", prompt)
     if st.session_state.get("chat_stage") == "complete":
