@@ -103,10 +103,38 @@ def _issuer_options() -> tuple[tuple[str, str], ...]:
 st.markdown(
     """
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden !important;
+            scrollbar-width: none;
+        }
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar,
+        [data-testid="stAppViewContainer"]::-webkit-scrollbar {
+            display: none;
+        }
+        [data-testid="stApp"],
+        [data-testid="stAppViewContainer"] {
+            height: 100dvh;
+            overflow: hidden !important;
+        }
+        section[data-testid="stMain"] {
+            height: 100dvh;
+            overflow: hidden !important;
+        }
         .block-container {
             max-width: 720px;
+            max-height: 100dvh;
             padding-top: 0.8rem;
             padding-bottom: 6.5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .block-container::-webkit-scrollbar {
+            width: 0;
+            height: 0;
         }
         h1, h2, h3 { letter-spacing: 0 !important; }
         [data-testid="stAppViewContainer"] { background: #f7f9fc; }

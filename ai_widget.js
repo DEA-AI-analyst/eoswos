@@ -19,6 +19,7 @@
         ' title="EOSWOS AI 메자닌 단건평가"',
         ' data-src="https://ai-contest-win.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"',
         ' loading="lazy"',
+        ' scrolling="no"',
         ' referrerpolicy="strict-origin-when-cross-origin"></iframe>'
     ].join("");
 
