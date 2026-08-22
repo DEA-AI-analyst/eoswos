@@ -461,10 +461,15 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
     issuer_options = _issuer_options()
     issuer_labels = {code: label for label, code in issuer_options}
 
+    if st.session_state.get("direct_product_type") not in (
+        SELF_STOCK_PRODUCT,
+        THIRD_PARTY_PRODUCT,
+    ):
+        st.session_state["direct_product_type"] = SELF_STOCK_PRODUCT
+
     product_type = st.segmented_control(
         "상품유형",
         options=(SELF_STOCK_PRODUCT, THIRD_PARTY_PRODUCT),
-        default=None,
         format_func=lambda value: (
             "CB / BW / EB(자기주식)" if value == SELF_STOCK_PRODUCT else value
         ),
@@ -660,6 +665,11 @@ if stage != "complete":
             key="open_evaluation_mode",
         ):
             st.session_state["panel_mode"] = "메자닌 평가"
+            if st.session_state.get("direct_product_type") not in (
+                SELF_STOCK_PRODUCT,
+                THIRD_PARTY_PRODUCT,
+            ):
+                st.session_state["direct_product_type"] = SELF_STOCK_PRODUCT
             st.rerun()
     with chat_col:
         if st.button(
