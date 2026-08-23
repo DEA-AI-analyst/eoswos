@@ -28,10 +28,19 @@ CREDIT_RATINGS = (
     "B+",
     "B",
     "B-",
+    "CCC+",
     "CCC",
+    "CCC-",
+    "CC+",
     "CC",
+    "CC-",
+    "C+",
     "C",
-    "D",
+    "C-",
+    "무등급",
+    "UNRATED",
+    "N/R",
+    "NR",
 )
 
 REQUIRED_FIELDS = (
