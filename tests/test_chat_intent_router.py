@@ -7,6 +7,10 @@ def test_general_methodology_questions_route_to_chatbase() -> None:
         route_chat_message("Full-fit과 OOS 차이는?").route
         is ChatRoute.TYPE_A_GENERAL
     )
+    assert (
+        route_chat_message("전환사채 평가 방법이 뭐야?").route
+        is ChatRoute.TYPE_A_GENERAL
+    )
 
 
 def test_evaluation_requests_only_open_the_structured_form() -> None:
@@ -15,6 +19,10 @@ def test_evaluation_requests_only_open_the_structured_form() -> None:
         "현대건설 AA- 15만원 5년으로 평가해줘",
         "신규 메자닌 평가",
         "M Grade 조회해줘",
+        "현대건설 전환사채 평가",
+        "현대건설 CB 평가",
+        "신주인수권부사채 평가 요청",
+        "교환사채 조회",
     )
     for prompt in prompts:
         decision = route_chat_message(prompt)
