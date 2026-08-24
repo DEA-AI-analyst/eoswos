@@ -162,6 +162,21 @@ st.markdown(
             border: 1px solid #e2e7ef;
             border-radius: 8px;
             background: #ffffff;
+            gap: 0.45rem !important;
+            padding-right: 0.75rem !important;
+            padding-left: 0.75rem !important;
+        }
+        [data-testid="stChatMessageContent"] {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
+            width: 100%;
+        }
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] ul,
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] ol {
+            margin-left: 0 !important;
+            padding-left: 1.15rem !important;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
         [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) {
