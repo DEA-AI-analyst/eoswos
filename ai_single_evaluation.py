@@ -454,7 +454,7 @@ def _render_script_iframe(source: str) -> None:
     """Run trusted UI script with the current Streamlit iframe API."""
     iframe = getattr(st, "iframe", None)
     if callable(iframe):
-        iframe(source, width="content", height=0, tab_index=-1)
+        iframe(source, width="content", height=1, tab_index=-1)
         return
 
     # Compatibility for local Streamlit versions released before st.iframe.

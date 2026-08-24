@@ -154,7 +154,7 @@ def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert 'iframe = getattr(st, "iframe", None)' in source
-    assert 'iframe(source, width="content", height=0, tab_index=-1)' in source
+    assert 'iframe(source, width="content", height=1, tab_index=-1)' in source
     assert "    components.html(" not in source
 
 def test_same_underlying_display_uses_standard_korean_reference() -> None:
