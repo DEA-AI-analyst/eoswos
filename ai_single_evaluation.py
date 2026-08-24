@@ -364,7 +364,7 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         st.dataframe(
             rows,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             column_config={
                 "가격": st.column_config.NumberColumn(format="localized"),
                 "M Score": st.column_config.NumberColumn(format="%.6f"),
@@ -643,7 +643,7 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
         submitted = st.form_submit_button(
             "평가시작",
             icon=":material/analytics:",
-            use_container_width=True,
+            width="stretch",
         )
 
     if not submitted:
@@ -722,14 +722,14 @@ if stage == "confirming":
 if stage == "complete":
     new_col, question_col = st.columns(2, gap="small")
     with new_col:
-        if st.button("새 평가", icon=":material/add:", use_container_width=True):
+        if st.button("새 평가", icon=":material/add:", width="stretch"):
             _reset_conversation()
             st.rerun()
     with question_col:
         if st.button(
             "결과 질문",
             icon=":material/chat:",
-            use_container_width=True,
+            width="stretch",
             key="ask_about_current_evaluation",
         ):
             st.session_state["panel_mode"] = "자연어 질의"
@@ -743,7 +743,7 @@ if stage != "complete":
             "메자닌 평가",
             icon=":material/analytics:",
             type="primary" if input_mode == "메자닌 평가" else "secondary",
-            use_container_width=True,
+            width="stretch",
             key="open_evaluation_mode",
         ):
             st.session_state["panel_mode"] = "메자닌 평가"
@@ -758,7 +758,7 @@ if stage != "complete":
             "자연어 질의",
             icon=":material/chat:",
             type="primary" if input_mode == "자연어 질의" else "secondary",
-            use_container_width=True,
+            width="stretch",
             key="open_chat_mode",
         ):
             st.session_state["panel_mode"] = "자연어 질의"
@@ -768,7 +768,7 @@ if stage != "complete":
             "Temp",
             icon=":material/widgets:",
             type="primary" if input_mode == "Temp" else "secondary",
-            use_container_width=True,
+            width="stretch",
             key="open_temp_mode",
         ):
             st.session_state["panel_mode"] = "Temp"
