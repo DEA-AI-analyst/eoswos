@@ -108,3 +108,22 @@ def test_chat_loading_status_requests_smooth_autoscroll() -> None:
     assert source.index('_scroll_to_latest_chat_status()') < source.index(
         'response = chatbase.ask('
     )
+
+
+def test_unexpected_chat_error_is_sanitized(monkeypatch) -> None:
+    at, calls = _app(monkeypatch)
+
+    def fail_safely(*args, **kwargs):
+        raise RuntimeError("sensitive traceback C:/private/service.py:99")
+
+    monkeypatch.setattr("chatbase_client.ChatbaseClient.ask", fail_safely)
+    _button(at, "\uc790\uc5f0\uc5b4 \uc9c8\uc758").click().run(timeout=10)
+    at.chat_input[0].set_value("M2\ub294 \ubb50\uc57c?").run(timeout=10)
+
+    assert not at.exception
+    assert calls["evaluate"] == 0
+    public_text = " ".join(str(item.value) for item in at.error)
+    assert "\ub2f5\ubcc0\uc744 \uc900\ube44\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4" in public_text
+    assert "sensitive" not in public_text
+    assert "C:/" not in public_text
+    assert "traceback" not in public_text.lower()

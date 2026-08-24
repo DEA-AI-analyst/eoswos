@@ -82,6 +82,14 @@ _RESULT_EXPLANATION_TERMS = (
     "s_m",
     "final score",
     "m grade",
+    "\ud3c9\uac00\ubcf4\uace0\uc11c",
+    "\ud3c9\uac00 \ubcf4\uace0\uc11c",
+    "\ubcf4\uace0\uc11c",
+    "\uc9c4\ub2e8",
+    "\ubd84\uc11d",
+    "\uc694\uc57d",
+    "\uac80\ud1a0 \ud3ec\uc778\ud2b8",
+    "\uccb4\ud06c\ud3ec\uc778\ud2b8",
 )
 
 

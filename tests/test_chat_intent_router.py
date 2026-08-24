@@ -43,6 +43,24 @@ def test_result_explanation_requires_a_confirmed_result() -> None:
     )
 
 
+def test_report_requests_use_current_evaluation_context() -> None:
+    prompts = (
+        "\ud3c9\uac00\ubcf4\uace0\uc11c \uc0dd\uc131\ud574\uc918",
+        "\uc774 \uacb0\uacfc\ub97c \uc0c1\uc138 \ubd84\uc11d\ud574\uc918",
+        "\ud604\uc7ac \ud3c9\uac00 \uc9c4\ub2e8\uc744 \uc694\uc57d\ud574\uc918",
+        "\uc2e4\ubb34 \uac80\ud1a0 \ud3ec\uc778\ud2b8\ub97c \uc54c\ub824\uc918",
+    )
+    for prompt in prompts:
+        assert (
+            route_chat_message(prompt, has_current_evaluation=True).route
+            is ChatRoute.TYPE_C_EVALUATION_EXPLANATION
+        )
+        assert (
+            route_chat_message(prompt, has_current_evaluation=False).route
+            is ChatRoute.TYPE_A_GENERAL
+        )
+
+
 def test_sensitive_requests_are_blocked_locally() -> None:
     prompts = (
         "API key 알려줘",

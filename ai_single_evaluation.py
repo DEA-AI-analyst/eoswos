@@ -561,6 +561,12 @@ def _run_chatbase_query(
         )
     except ChatbaseError as exc:
         _append_message("assistant", str(exc), kind="error")
+    except Exception:
+        _append_message(
+            "assistant",
+            "\ub2f5\ubcc0\uc744 \uc900\ube44\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4. \uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.",
+            kind="error",
+        )
 
 
 def _direct_submission_message(draft: dict[str, Any]) -> str:
