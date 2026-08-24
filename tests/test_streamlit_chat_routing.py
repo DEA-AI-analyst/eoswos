@@ -149,3 +149,16 @@ def test_completed_output_requests_bottom_scroll_only() -> None:
     assert "container.scrollTo({ top: container.scrollHeight, behavior: 'auto' })" in source
     assert "position: fixed" not in source
     assert "position: sticky" not in source
+
+def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert 'iframe = getattr(st, "iframe", None)' in source
+    assert 'iframe(source, width="content", height=0, tab_index=-1)' in source
+    assert "    components.html(" not in source
+
+def test_same_underlying_display_uses_standard_korean_reference() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert 'str(underlying_company).strip() == "좌동"' in source
+    assert 'underlying_company = "상동"' in source

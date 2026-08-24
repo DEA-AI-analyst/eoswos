@@ -407,7 +407,10 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         st.write(f"요청 ID: `{result.get('request_id', '-')}`")
         st.write(f"평가기준일: `{result.get('price_basis_date', '-')}`")
         st.write(f"발행회사: {result.get('issuer_company', '-')}")
-        st.write(f"기초자산: {result.get('underlying_company', '-')}")
+        underlying_company = result.get("underlying_company", "-")
+        if str(underlying_company).strip() == "좌동":
+            underlying_company = "상동"
+        st.write(f"기초자산: {underlying_company}")
 
 
 def _initial_messages() -> list[dict[str, Any]]:
@@ -447,9 +450,21 @@ def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -
     st.session_state["chat_messages"].append(message)
 
 
+def _render_script_iframe(source: str) -> None:
+    """Run trusted UI script with the current Streamlit iframe API."""
+    iframe = getattr(st, "iframe", None)
+    if callable(iframe):
+        iframe(source, width="content", height=0, tab_index=-1)
+        return
+
+    # Compatibility for local Streamlit versions released before st.iframe.
+    import streamlit.components.v1 as legacy_components
+
+    legacy_components.html(source, height=0, width=0)
+
 def _scroll_to_latest_chat_status() -> None:
     """Bring the latest message or spinner above the sticky chat input."""
-    components.html(
+    _render_script_iframe(
         """
         <script>
         (() => {
@@ -478,13 +493,11 @@ def _scroll_to_latest_chat_status() -> None:
         })();
         </script>
         """,
-        height=0,
-        width=0,
     )
 
 def _scroll_to_chat_bottom_after_render() -> None:
     """Move to the latest completed output without locking manual scrolling."""
-    components.html(
+    _render_script_iframe(
         """
         <script>
         (() => {
@@ -498,8 +511,6 @@ def _scroll_to_chat_bottom_after_render() -> None:
         })();
         </script>
         """,
-        height=0,
-        width=0,
     )
 
 def _render_message(message: dict[str, Any]) -> None:
