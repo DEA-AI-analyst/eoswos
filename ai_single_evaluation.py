@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import html
 import os
 from datetime import datetime
@@ -12,19 +13,34 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
+from chat_evaluation_context import (
+    build_read_only_evaluation_context,
+    safe_chat_history,
+)
+from chat_state_guard import protect_evaluation_state
+from chat_intent_router import (
+    BLOCKED_SCOPE_RESPONSE,
+    EVALUATION_FORM_RESPONSE,
+    ChatRoute,
+    route_chat_message,
+)
+from chatbase_client import (
+    ChatbaseClient,
+    ChatbaseConfigurationError,
+    ChatbaseError,
+)
 from mezz_api_client import (
     MezzApiClient,
     MezzApiConfigurationError,
     MezzApiError,
 )
-from mezz_chat_parser import (
+from mezz_evaluation_contract import (
     CREDIT_RATINGS,
     FIELD_LABELS,
     SELF_STOCK_PRODUCT,
     THIRD_PARTY_PRODUCT,
     build_api_payload,
     missing_fields,
-    parse_evaluation_prompt,
     validate_draft,
 )
 
@@ -251,6 +267,11 @@ def _build_client(base_url: str, token: str) -> MezzApiClient:
     return MezzApiClient(base_url=base_url, token=token)
 
 
+@st.cache_resource(show_spinner=False)
+def _build_chatbase_client(api_key: str, agent_id: str) -> ChatbaseClient:
+    return ChatbaseClient(api_key=api_key, agent_id=agent_id)
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def _health(base_url: str, token_fingerprint: str) -> dict[str, Any]:
     del token_fingerprint
@@ -377,6 +398,8 @@ def _ensure_session() -> None:
         st.session_state["chat_stage"] = "collecting"
     if "panel_mode" not in st.session_state:
         st.session_state["panel_mode"] = None
+    if "current_evaluation" not in st.session_state:
+        st.session_state["current_evaluation"] = None
 
 
 def _reset_conversation() -> None:
@@ -384,6 +407,7 @@ def _reset_conversation() -> None:
     st.session_state["evaluation_draft"] = {}
     st.session_state["chat_stage"] = "collecting"
     st.session_state["panel_mode"] = None
+    st.session_state["current_evaluation"] = None
 
 
 def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -> None:
@@ -428,6 +452,7 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
             result=api_result.data,
             elapsed_ms=api_result.elapsed_ms,
         )
+        st.session_state["current_evaluation"] = copy.deepcopy(api_result.data)
         st.session_state["chat_stage"] = "complete"
     except ValueError as exc:
         _append_message("assistant", str(exc), kind="error")
@@ -438,6 +463,52 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
             detail = f"{detail} 확인 항목: {', '.join(exc.fields)}"
         _append_message("assistant", detail, kind="error")
         st.session_state["chat_stage"] = "collecting"
+
+
+def _run_chatbase_query(
+    prompt: str,
+    *,
+    route: ChatRoute,
+    history: list[dict[str, str]],
+) -> None:
+    api_key = _setting("CHATBASE_API_KEY")
+    agent_id = _setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID")
+    current_evaluation = copy.deepcopy(
+        st.session_state.get("current_evaluation")
+    )
+    context = (
+        build_read_only_evaluation_context(current_evaluation)
+        if route is ChatRoute.TYPE_C_EVALUATION_EXPLANATION
+        else None
+    )
+
+    try:
+        chatbase = _build_chatbase_client(api_key, agent_id)
+        with st.spinner("답변을 준비 중입니다."):
+            response = chatbase.ask(
+                prompt,
+                history=history,
+                evaluation_context=context,
+            )
+        protected_evaluation, changed = protect_evaluation_state(
+            current_evaluation,
+            st.session_state.get("current_evaluation"),
+        )
+        if changed:
+            st.session_state["current_evaluation"] = protected_evaluation
+            raise ChatbaseError(
+                "확정 평가결과 상태를 보호하기 위해 답변을 중단했습니다.",
+                code="STATE_INTEGRITY_ERROR",
+            )
+        _append_message("assistant", response.text)
+    except ChatbaseConfigurationError:
+        _append_message(
+            "assistant",
+            "자연어 질의 서비스 연결 설정을 확인해 주세요.",
+            kind="error",
+        )
+    except ChatbaseError as exc:
+        _append_message("assistant", str(exc), kind="error")
 
 
 def _direct_submission_message(draft: dict[str, Any]) -> str:
@@ -649,9 +720,20 @@ if stage == "confirming":
     st.rerun()
 
 if stage == "complete":
-    if st.button("새 평가", icon=":material/add:", use_container_width=True):
-        _reset_conversation()
-        st.rerun()
+    new_col, question_col = st.columns(2, gap="small")
+    with new_col:
+        if st.button("새 평가", icon=":material/add:", use_container_width=True):
+            _reset_conversation()
+            st.rerun()
+    with question_col:
+        if st.button(
+            "결과 질문",
+            icon=":material/chat:",
+            use_container_width=True,
+            key="ask_about_current_evaluation",
+        ):
+            st.session_state["panel_mode"] = "자연어 질의"
+            st.rerun()
 
 input_mode = st.session_state.get("panel_mode")
 if stage != "complete":
@@ -701,58 +783,22 @@ prompt = (
     else None
 )
 if prompt:
+    history = safe_chat_history(st.session_state["chat_messages"])
     _append_message("user", prompt)
-    if st.session_state.get("chat_stage") == "complete":
-        st.session_state["evaluation_draft"] = {}
-        st.session_state["chat_stage"] = "collecting"
+    current_evaluation = st.session_state.get("current_evaluation")
+    decision = route_chat_message(
+        prompt,
+        has_current_evaluation=isinstance(current_evaluation, dict),
+    )
 
-    current_draft = dict(st.session_state.get("evaluation_draft") or {})
-    outcome = parse_evaluation_prompt(prompt, current=current_draft)
-
-    if outcome.blocked:
-        _append_message(
-            "assistant",
-            "본 인터페이스는 메자닌 신규 평가 및 평가결과 설명 기능만 제공합니다.",
-        )
-    elif outcome.reset:
-        _reset_conversation()
-    elif outcome.confirm:
-        missing = missing_fields(current_draft)
-        errors = validate_draft(current_draft, today=today_seoul) if not missing else []
-        if missing:
-            _append_message("assistant", _missing_message(missing))
-        elif errors:
-            _append_message("assistant", " ".join(errors), kind="error")
-        else:
-            _run_evaluation(client, today_seoul)
-    elif not outcome.updates:
-        _append_message(
-            "assistant",
-            "평가조건을 확인하지 못했습니다. 상품유형과 종목코드부터 알려주세요.",
-        )
-    else:
-        previous_product = current_draft.get("product_type")
-        next_product = outcome.updates.get("product_type")
-        if next_product == THIRD_PARTY_PRODUCT and previous_product == SELF_STOCK_PRODUCT:
-            current_draft.pop("stock_code", None)
-        current_draft.update(outcome.updates)
-        if current_draft.get("product_type") == SELF_STOCK_PRODUCT and current_draft.get("issuer_stock_code"):
-            current_draft["stock_code"] = current_draft["issuer_stock_code"]
-        st.session_state["evaluation_draft"] = current_draft
-
-        for warning in outcome.warnings:
-            _append_message("assistant", warning)
-
-        missing = missing_fields(current_draft)
-        if missing:
+    if decision.route is ChatRoute.TYPE_D_BLOCKED:
+        _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
+    elif decision.route is ChatRoute.TYPE_B_EVALUATION:
+        st.session_state["panel_mode"] = "메자닌 평가"
+        if st.session_state.get("chat_stage") == "complete":
             st.session_state["chat_stage"] = "collecting"
-            _append_message("assistant", _missing_message(missing))
-        else:
-            errors = validate_draft(current_draft, today=today_seoul)
-            if errors:
-                st.session_state["chat_stage"] = "collecting"
-                _append_message("assistant", " ".join(errors), kind="error")
-            else:
-                _run_evaluation(client, today_seoul)
+        _append_message("assistant", EVALUATION_FORM_RESPONSE)
+    else:
+        _run_chatbase_query(prompt, route=decision.route, history=history)
 
     st.rerun()
