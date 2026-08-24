@@ -174,6 +174,21 @@ st.markdown(
         [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
             width: 100%;
         }
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] h1 {
+            font-size: 1.3rem !important;
+            line-height: 1.35 !important;
+            margin: 1rem 0 0.55rem !important;
+        }
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] h2 {
+            font-size: 1.12rem !important;
+            line-height: 1.4 !important;
+            margin: 0.9rem 0 0.45rem !important;
+        }
+        [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] h3 {
+            font-size: 1rem !important;
+            line-height: 1.4 !important;
+            margin: 0.8rem 0 0.4rem !important;
+        }
         [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] ul,
         [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] ol {
             margin-left: 0 !important;
