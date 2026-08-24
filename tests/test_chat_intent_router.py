@@ -72,3 +72,23 @@ def test_sensitive_requests_are_blocked_locally() -> None:
         decision = route_chat_message(prompt, has_current_evaluation=True)
         assert decision.route is ChatRoute.TYPE_D_BLOCKED
         assert decision.calls_chatbase is False
+
+
+def test_review_and_report_phrases_use_confirmed_result_context() -> None:
+    prompts = (
+        "검토의견 작성해줘",
+        "검토 보고서를 작성해줘",
+        "평가의견 알려줘",
+        "평가 보고서 생성해줘",
+        "심사의견 작성해줘",
+        "심사 보고서를 보여줘",
+    )
+    for prompt in prompts:
+        assert (
+            route_chat_message(prompt, has_current_evaluation=True).route
+            is ChatRoute.TYPE_C_EVALUATION_EXPLANATION
+        )
+        assert (
+            route_chat_message(prompt, has_current_evaluation=False).route
+            is ChatRoute.TYPE_A_GENERAL
+        )

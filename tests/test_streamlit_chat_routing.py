@@ -127,3 +127,25 @@ def test_unexpected_chat_error_is_sanitized(monkeypatch) -> None:
     assert "sensitive" not in public_text
     assert "C:/" not in public_text
     assert "traceback" not in public_text.lower()
+
+
+def test_completed_evaluation_shows_new_evaluation_and_chat_input(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    at.session_state["chat_stage"] = "complete"
+    at.session_state["panel_mode"] = "자연어 질의"
+    at.session_state["current_evaluation"] = {"m_grade": "M3"}
+    at.run(timeout=10)
+
+    assert not at.exception
+    labels = [button.label for button in at.button]
+    assert labels == ["새 평가"]
+    assert len(at.chat_input) == 1
+
+
+def test_completed_output_requests_bottom_scroll_only() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert "_scroll_to_chat_bottom_after_render()" in source
+    assert "container.scrollTo({ top: container.scrollHeight, behavior: 'auto' })" in source
+    assert "position: fixed" not in source
+    assert "position: sticky" not in source

@@ -482,6 +482,26 @@ def _scroll_to_latest_chat_status() -> None:
         width=0,
     )
 
+def _scroll_to_chat_bottom_after_render() -> None:
+    """Move to the latest completed output without locking manual scrolling."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const scrollBottom = () => {
+                const container = window.parent.document.querySelector('.block-container');
+                if (!container) return;
+                container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+            };
+
+            [0, 80, 220, 500].forEach((delay) => window.setTimeout(scrollBottom, delay));
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
 def _render_message(message: dict[str, Any]) -> None:
     role = str(message.get("role") or "assistant")
     with st.chat_message(role):
@@ -520,6 +540,7 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
         )
         st.session_state["current_evaluation"] = copy.deepcopy(api_result.data)
         st.session_state["chat_stage"] = "complete"
+        st.session_state["panel_mode"] = "자연어 질의"
     except ValueError as exc:
         _append_message("assistant", str(exc), kind="error")
         st.session_state["chat_stage"] = "collecting"
@@ -786,6 +807,9 @@ today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()
 for chat_message in st.session_state["chat_messages"]:
     _render_message(chat_message)
 
+if len(st.session_state["chat_messages"]) > 1:
+    _scroll_to_chat_bottom_after_render()
+
 stage = st.session_state.get("chat_stage")
 
 if stage == "confirming":
@@ -793,21 +817,9 @@ if stage == "confirming":
     st.rerun()
 
 if stage == "complete":
-    new_col, question_col = st.columns(2, gap="small")
-    with new_col:
-        if st.button("새 평가", icon=":material/add:", width="stretch"):
-            _reset_conversation()
-            st.rerun()
-    with question_col:
-        if st.button(
-            "결과 질문",
-            icon=":material/chat:",
-            width="stretch",
-            key="ask_about_current_evaluation",
-        ):
-            st.session_state["panel_mode"] = "자연어 질의"
-            st.rerun()
-
+    if st.button("새 평가", icon=":material/add:", width="stretch"):
+        _reset_conversation()
+        st.rerun()
 input_mode = st.session_state.get("panel_mode")
 if stage != "complete":
     evaluation_col, chat_col = st.columns(2, gap="small")
@@ -841,7 +853,7 @@ if stage != "complete":
 
 prompt = (
     st.chat_input("질문을 입력해 주세요.")
-    if input_mode == "자연어 질의"
+    if input_mode == "자연어 질의" or stage == "complete"
     else None
 )
 if prompt:
