@@ -9,7 +9,6 @@
 | 개발 목적 | 수정할 파일 |
 |---|---|
 | AI 패널 화면, 버튼, 입력폼, 결과 표시 | `ai_single_evaluation.py` |
-| `Temp` 버튼에 새로운 화면이나 기능 연결 | `ai_single_evaluation.py` |
 | 자연어 질문의 TYPE A~D 의도 분류 | `chat_intent_router.py` |
 | Chatbase REST 요청, 인증, 오류 정제 | `chatbase_client.py` |
 | 확정 평가결과의 읽기 전용 설명 컨텍스트 | `chat_evaluation_context.py` |
@@ -19,25 +18,11 @@
 | 풍선과 패널의 크기, 색상, 위치 변경 | `ai_widget.css` |
 | eoswos.com의 iframe, SEO, 분석 코드 변경 | `index.html` |
 
-`Temp`는 현재 `자연어 질의`와 같은 대화창을 열지만 `panel_mode == "Temp"`로 별도 상태가 유지됩니다. 독립 기능으로 확장할 때는 `ai_single_evaluation.py`에서 `Temp`를 검색한 뒤 다음 구조로 분리합니다.
-
-```python
-if input_mode == "Temp":
-    _render_temp_feature(client, today_seoul)
-```
-
-독립 화면을 만들면 기존 채팅 조건인 아래 코드에서는 `Temp`를 제외해야 중복 표시되지 않습니다.
-
-```python
-if input_mode in {"자연어 질의", "Temp"}:
-    ...
-```
-
 ## 파일 설명
 
 | 파일 | 역할 |
 |---|---|
-| `ai_single_evaluation.py` | Streamlit AI 패널 본체입니다. 세 모드, 평가 입력폼, 세션 상태, API 호출, 결과 화면을 담당합니다. |
+| `ai_single_evaluation.py` | Streamlit AI 패널 본체입니다. 메자닌 평가·자연어 질의 모드, 평가 입력폼, 세션 상태, API 호출, 결과 화면을 담당합니다. |
 | `chat_intent_router.py` | 자연어 입력을 일반질문, 평가요청, 결과설명, 차단요청으로 분류합니다. 평가값을 추출하거나 자동채움하지 않습니다. |
 | `chatbase_client.py` | 커스텀 AI 패널에서 Chatbase REST API를 서버 측으로 호출하고 외부 오류를 정제합니다. |
 | `chat_evaluation_context.py` | 확정 평가결과 중 허용 필드만 복사해 Chatbase 설명용 읽기 전용 컨텍스트를 만듭니다. |

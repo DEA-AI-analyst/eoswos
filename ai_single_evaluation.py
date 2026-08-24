@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from chat_evaluation_context import (
     build_read_only_evaluation_context,
@@ -431,6 +432,41 @@ def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -
     st.session_state["chat_messages"].append(message)
 
 
+def _scroll_to_latest_chat_status() -> None:
+    """Bring the latest message or spinner above the sticky chat input."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const scrollLatest = () => {
+                const doc = window.parent.document;
+                const container = doc.querySelector('.block-container');
+                if (!container) return false;
+
+                const spinners = doc.querySelectorAll('[data-testid="stSpinner"]');
+                const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
+                const target = spinners[spinners.length - 1] || messages[messages.length - 1];
+
+                if (target) {
+                    const targetTop = target.getBoundingClientRect().top;
+                    const containerTop = container.getBoundingClientRect().top;
+                    const top = container.scrollTop + targetTop - containerTop - 24;
+                    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                    return true;
+                }
+
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                return false;
+            };
+
+            [0, 80, 220, 500].forEach((delay) => window.setTimeout(scrollLatest, delay));
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
 def _render_message(message: dict[str, Any]) -> None:
     role = str(message.get("role") or "assistant")
     with st.chat_message(role):
@@ -500,6 +536,7 @@ def _run_chatbase_query(
     try:
         chatbase = _build_chatbase_client(api_key, agent_id)
         with st.spinner("답변을 준비 중입니다."):
+            _scroll_to_latest_chat_status()
             response = chatbase.ask(
                 prompt,
                 history=history,
@@ -752,7 +789,7 @@ if stage == "complete":
 
 input_mode = st.session_state.get("panel_mode")
 if stage != "complete":
-    evaluation_col, chat_col, temp_col = st.columns(3, gap="small")
+    evaluation_col, chat_col = st.columns(2, gap="small")
     with evaluation_col:
         if st.button(
             "메자닌 평가",
@@ -778,23 +815,12 @@ if stage != "complete":
         ):
             st.session_state["panel_mode"] = "자연어 질의"
             st.rerun()
-    with temp_col:
-        if st.button(
-            "Temp",
-            icon=":material/widgets:",
-            type="primary" if input_mode == "Temp" else "secondary",
-            width="stretch",
-            key="open_temp_mode",
-        ):
-            st.session_state["panel_mode"] = "Temp"
-            st.rerun()
-
     if input_mode == "메자닌 평가":
         _render_direct_input(client, today_seoul)
 
 prompt = (
     st.chat_input("질문을 입력해 주세요.")
-    if input_mode in {"자연어 질의", "Temp"}
+    if input_mode == "자연어 질의"
     else None
 )
 if prompt:

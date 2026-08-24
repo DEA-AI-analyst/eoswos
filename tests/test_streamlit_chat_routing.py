@@ -56,6 +56,15 @@ def _button(at: AppTest, label: str):
     return next(button for button in at.button if button.label == label)
 
 
+def test_initial_modes_exclude_temp(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+
+    labels = [button.label for button in at.button]
+    assert "메자닌 평가" in labels
+    assert "자연어 질의" in labels
+    assert "Temp" not in labels
+
+
 def test_general_question_calls_chatbase_only(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
     _button(at, "자연어 질의").click().run(timeout=10)
@@ -89,3 +98,13 @@ def test_blocked_request_never_calls_external_chat(monkeypatch) -> None:
     assert not at.exception
     assert calls["chatbase"] == 0
     assert calls["evaluate"] == 0
+
+def test_chat_loading_status_requests_smooth_autoscroll() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert "_scroll_to_latest_chat_status()" in source
+    assert "[data-testid=\"stSpinner\"]" in source
+    assert "behavior: 'smooth'" in source
+    assert source.index('_scroll_to_latest_chat_status()') < source.index(
+        'response = chatbase.ask('
+    )
