@@ -101,9 +101,10 @@ def test_review_and_report_phrases_use_confirmed_result_context() -> None:
 
 
 def test_short_company_evaluation_request_has_safe_local_fallback() -> None:
-    decision = route_chat_message("아이티켐 평가.")
-    assert decision.route is ChatRoute.TYPE_B_EVALUATION
-    assert decision.opens_evaluation_form is True
+    for prompt in ("아이티켐 평가.", "삼성전자 평가.", "평가."):
+        decision = route_chat_message(prompt)
+        assert decision.route is ChatRoute.TYPE_B_EVALUATION
+        assert decision.opens_evaluation_form is True
 
 
 def test_ai_resolution_is_limited_to_evaluation_adjacent_a_b_routes() -> None:
@@ -117,7 +118,7 @@ def test_ai_resolution_is_limited_to_evaluation_adjacent_a_b_routes() -> None:
 
     assert should_resolve_route_with_ai(
         "아이티켐 평가.", evaluation
-    ) is True
+    ) is False
     assert should_resolve_route_with_ai(
         "M2는 뭐야?", general
     ) is False
@@ -127,6 +128,13 @@ def test_ai_resolution_is_limited_to_evaluation_adjacent_a_b_routes() -> None:
     assert should_resolve_route_with_ai(
         "평가보고서 작성해줘", explanation
     ) is False
+
+
+def test_methodology_question_remains_ai_resolvable() -> None:
+    prompt = "M Grade 평가 기준이 뭐야?"
+    decision = route_chat_message(prompt)
+
+    assert should_resolve_route_with_ai(prompt, decision) is True
 
 
 def test_ai_intent_prompt_is_classification_only() -> None:

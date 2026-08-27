@@ -61,6 +61,11 @@ _BLOCKED_TERMS = (
     "모델 취약점",
 )
 
+_EXPLICIT_EVALUATION_REQUEST_PATTERNS = (
+    r"^(?:평가|조회|산출|계산)\s*[.!?]?\s*$",
+    r"^(?!.*(?:방법|의미|개념|원리|산식|차이|뭐|무엇|어떻게|왜))(?=.{1,80}$).+(?:평가|조회|진단|분석|검토)\s*[.!?]?\s*$",
+)
+
 _EVALUATION_ACTION_PATTERNS = (
     r"(?:메자닌|cb|bw|eb|m\s*grade|m등급|등급|회사|종목).{0,30}(?:평가|조회|산출|계산)\s*(?:해|해줘|해주세요|하자|시작|실행|진행|보고\s*싶)",
     r"(?:평가|조회|산출|계산)\s*(?:해|해줘|해주세요|하자|시작|실행|진행)",
@@ -150,7 +155,13 @@ def route_chat_message(
     ):
         return RouteDecision(ChatRoute.TYPE_C_EVALUATION_EXPLANATION)
 
-    if any(re.search(pattern, lowered, re.IGNORECASE) for pattern in _EVALUATION_ACTION_PATTERNS):
+    if any(
+        re.search(pattern, lowered, re.IGNORECASE)
+        for pattern in (
+            *_EXPLICIT_EVALUATION_REQUEST_PATTERNS,
+            *_EVALUATION_ACTION_PATTERNS,
+        )
+    ):
         return RouteDecision(ChatRoute.TYPE_B_EVALUATION)
 
     return RouteDecision(ChatRoute.TYPE_A_GENERAL)
@@ -169,6 +180,14 @@ def should_resolve_route_with_ai(
         return False
 
     normalized = " ".join(str(text or "").strip().split()).lower()
+    if (
+        deterministic_decision.route is ChatRoute.TYPE_B_EVALUATION
+        and any(
+            re.search(pattern, normalized, re.IGNORECASE)
+            for pattern in _EXPLICIT_EVALUATION_REQUEST_PATTERNS
+        )
+    ):
+        return False
     return any(term in normalized for term in _AI_ROUTING_TRIGGER_TERMS)
 
 

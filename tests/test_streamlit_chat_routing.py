@@ -94,13 +94,17 @@ def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatc
     assert any(button.label == "평가시작" for button in at.button)
 
 
-def test_short_company_evaluation_request_opens_form(monkeypatch) -> None:
+@pytest.mark.parametrize("prompt", ("삼성전자 평가.", "평가."))
+def test_short_company_evaluation_request_opens_form_without_ai_override(
+    monkeypatch,
+    prompt,
+) -> None:
     at, calls = _app(monkeypatch)
     _button(at, "자연어 질의").click().run(timeout=10)
-    at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
+    at.chat_input[0].set_value(prompt).run(timeout=10)
 
     assert not at.exception
-    assert calls["chatbase"] == 1
+    assert calls["chatbase"] == 0
     assert calls["evaluate"] == 0
     assert at.session_state["panel_mode"] == "메자닌 평가"
     assert dict(at.session_state["evaluation_draft"]) == {}
