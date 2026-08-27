@@ -113,6 +113,10 @@ def test_explicit_evaluation_request_normalizes_unicode_and_hidden_marks() -> No
         "평가.",
         "평가．",
         "\u200b평가.\ufeff",
+        "검토",
+        "검토.",
+        "심사",
+        "심사.",
     )
     for prompt in prompts:
         assert is_explicit_evaluation_request(prompt) is True

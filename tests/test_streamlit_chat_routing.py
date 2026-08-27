@@ -94,7 +94,10 @@ def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatc
     assert any(button.label == "평가시작" for button in at.button)
 
 
-@pytest.mark.parametrize("prompt", ("삼성전자 평가.", "평가."))
+@pytest.mark.parametrize(
+    "prompt",
+    ("삼성전자 평가.", "평가.", "검토", "검토.", "심사", "심사."),
+)
 def test_short_company_evaluation_request_opens_form_without_ai_override(
     monkeypatch,
     prompt,
@@ -203,8 +206,10 @@ def test_completed_evaluation_shows_new_evaluation_and_chat_input(monkeypatch) -
     assert len(at.chat_input) == 1
 
 
+@pytest.mark.parametrize("prompt", ("평가.", "검토", "심사"))
 def test_explicit_evaluation_request_reopens_form_after_completed_result(
     monkeypatch,
+    prompt,
 ) -> None:
     at, calls = _app(monkeypatch)
     at.session_state["chat_stage"] = "complete"
@@ -212,7 +217,7 @@ def test_explicit_evaluation_request_reopens_form_after_completed_result(
     at.session_state["current_evaluation"] = {"m_grade": "M3"}
     at.run(timeout=10)
 
-    at.chat_input[0].set_value("평가.").run(timeout=10)
+    at.chat_input[0].set_value(prompt).run(timeout=10)
 
     assert not at.exception
     assert calls["chatbase"] == 0
