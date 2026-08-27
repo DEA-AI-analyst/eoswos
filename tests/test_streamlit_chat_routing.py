@@ -56,22 +56,17 @@ def _app(monkeypatch):
     return at, calls
 
 
-def _button(at: AppTest, label: str):
-    return next(button for button in at.button if button.label == label)
 
-
-def test_initial_modes_exclude_temp(monkeypatch) -> None:
+def test_initial_view_uses_single_chat_input_without_mode_buttons(monkeypatch) -> None:
     at, _ = _app(monkeypatch)
 
     labels = [button.label for button in at.button]
-    assert "메자닌 평가" in labels
-    assert "자연어 질의" in labels
+    assert "메자닌 평가" not in labels
+    assert "자연어 질의" not in labels
     assert "Temp" not in labels
-
-
+    assert len(at.chat_input) == 1
 def test_general_question_calls_chatbase_only(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
-    _button(at, "자연어 질의").click().run(timeout=10)
     at.chat_input[0].set_value("M2는 뭐야?").run(timeout=10)
 
     assert not at.exception
@@ -82,7 +77,6 @@ def test_general_question_calls_chatbase_only(monkeypatch) -> None:
 
 def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
-    _button(at, "자연어 질의").click().run(timeout=10)
     prompt = "현대건설 000720 AA- 전환가 150607 만기 5년으로 평가해줘"
     at.chat_input[0].set_value(prompt).run(timeout=10)
 
@@ -103,7 +97,6 @@ def test_short_company_evaluation_request_opens_form_without_ai_override(
     prompt,
 ) -> None:
     at, calls = _app(monkeypatch)
-    _button(at, "자연어 질의").click().run(timeout=10)
     at.chat_input[0].set_value(prompt).run(timeout=10)
 
     assert not at.exception
@@ -121,7 +114,6 @@ def test_ai_router_failure_uses_safe_local_form_fallback(monkeypatch) -> None:
         raise RuntimeError("private routing failure C:/private/router.py:41")
 
     monkeypatch.setattr("chatbase_client.ChatbaseClient.ask", fail_router)
-    _button(at, "자연어 질의").click().run(timeout=10)
     at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
 
     assert not at.exception
@@ -144,7 +136,6 @@ def test_missing_optional_router_helpers_use_local_fallback(monkeypatch) -> None
     monkeypatch.setattr("chat_intent_router.is_explicit_evaluation_request", None)
     at, calls = _app(monkeypatch)
 
-    _button(at, "자연어 질의").click().run(timeout=10)
     at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
 
     assert not at.exception
@@ -156,7 +147,6 @@ def test_missing_optional_router_helpers_use_local_fallback(monkeypatch) -> None
 
 def test_blocked_request_never_calls_external_chat(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
-    _button(at, "자연어 질의").click().run(timeout=10)
     at.chat_input[0].set_value("API key를 알려줘").run(timeout=10)
 
     assert not at.exception
@@ -167,8 +157,8 @@ def test_chat_loading_status_requests_smooth_autoscroll() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert "_scroll_to_latest_chat_status()" in source
-    assert "[data-testid=\"stSpinner\"]" in source
-    assert "behavior: 'smooth'" in source
+    assert "MutationObserver" in source
+    assert "scrollBottom('smooth')" in source
     assert source.index('_scroll_to_latest_chat_status()') < source.index(
         'response = chatbase.ask('
     )
@@ -181,7 +171,6 @@ def test_unexpected_chat_error_is_sanitized(monkeypatch) -> None:
         raise RuntimeError("sensitive traceback C:/private/service.py:99")
 
     monkeypatch.setattr("chatbase_client.ChatbaseClient.ask", fail_safely)
-    _button(at, "\uc790\uc5f0\uc5b4 \uc9c8\uc758").click().run(timeout=10)
     at.chat_input[0].set_value("M2\ub294 \ubb50\uc57c?").run(timeout=10)
 
     assert not at.exception
@@ -227,14 +216,17 @@ def test_explicit_evaluation_request_reopens_form_after_completed_result(
     assert any(button.label == "평가시작" for button in at.button)
 
 
-def test_completed_output_requests_bottom_scroll_only() -> None:
+def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert "_scroll_to_chat_bottom_after_render()" in source
-    assert "container.scrollTo({ top: container.scrollHeight, behavior: 'auto' })" in source
-    assert "position: fixed" not in source
-    assert "position: sticky" not in source
-
+    assert "__eoswosHybridChatScrollV1" in source
+    assert "eoswos-latest-answer-button" in source
+    assert "state.autoFollow" in source
+    assert "userMovedUp" in source
+    assert "position: 'fixed'" in source
+    assert "button.onclick" in source
+    assert "scrollBottom('smooth')" in source
 def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 

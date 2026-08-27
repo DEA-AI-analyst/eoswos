@@ -275,28 +275,7 @@ st.markdown(
             font-weight: 650;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
-        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 0.4rem !important;
-        }
-        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode)
-        > [data-testid="stColumn"] {
-            flex: 1 1 0 !important;
-            width: 0 !important;
-            min-width: 0 !important;
-        }
-        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) button {
-            min-width: 0 !important;
-            height: 2.5rem;
-            padding-right: 0.35rem !important;
-            padding-left: 0.35rem !important;
-        }
-        [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode)
-        button [data-testid="stMarkdownContainer"] p {
-            white-space: nowrap;
-            font-size: 0.78rem;
-        }
+
         .chat-title {
             padding: 0.25rem 0 0.1rem;
         }
@@ -542,56 +521,139 @@ def _render_script_iframe(source: str) -> None:
 
     legacy_components.html(source, height=0, width=0)
 
-def _scroll_to_latest_chat_status() -> None:
-    """Bring the latest message or spinner above the sticky chat input."""
+def _render_hybrid_chat_scroll(target_mode: str) -> None:
+    """Follow new output near the bottom and preserve deliberate upward reading."""
+    mode = "status" if target_mode == "status" else "completed"
     _render_script_iframe(
-        """
+        f"""
         <script>
-        (() => {
-            const scrollLatest = () => {
-                const doc = window.parent.document;
-                const container = doc.querySelector('.block-container');
-                if (!container) return false;
+        (() => {{
+            const doc = window.parent.document;
+            const targetMode = {mode!r};
+            const stateKey = '__eoswosHybridChatScrollV1';
+            const buttonId = 'eoswos-latest-answer-button';
+            const threshold = 96;
+            const candidates = [
+                doc.querySelector('[data-testid="stMain"]'),
+                doc.querySelector('.block-container'),
+                doc.scrollingElement,
+            ];
+            const container = candidates.find((node) =>
+                node && node.scrollHeight > node.clientHeight + 4
+            ) || doc.scrollingElement;
+            if (!container) return;
 
-                const spinners = doc.querySelectorAll('[data-testid="stSpinner"]');
-                const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
-                const target = spinners[spinners.length - 1] || messages[messages.length - 1];
+            let state = window.parent[stateKey];
+            if (!state) {{
+                state = {{
+                    autoFollow: true,
+                    lastTop: Number(container.scrollTop || 0),
+                    programmaticUntil: 0,
+                }};
+                window.parent[stateKey] = state;
+            }}
 
-                if (target) {
-                    const targetTop = target.getBoundingClientRect().top;
-                    const containerTop = container.getBoundingClientRect().top;
-                    const top = container.scrollTop + targetTop - containerTop - 24;
-                    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-                    return true;
-                }
+            if (state.container && state.scrollHandler) {{
+                state.container.removeEventListener('scroll', state.scrollHandler);
+            }}
+            if (state.observer) state.observer.disconnect();
+            state.container = container;
 
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-                return false;
-            };
+            let button = doc.getElementById(buttonId);
+            if (!button) {{
+                button = doc.createElement('button');
+                button.id = buttonId;
+                button.type = 'button';
+                button.textContent = '↓';
+                button.title = '최신 답변으로 이동';
+                button.setAttribute('aria-label', '최신 답변으로 이동');
+                Object.assign(button.style, {{
+                    position: 'fixed',
+                    right: '18px',
+                    bottom: '84px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#2563eb',
+                    fontSize: '22px',
+                    lineHeight: '36px',
+                    cursor: 'pointer',
+                    boxShadow: '0 5px 16px rgba(15, 23, 42, 0.18)',
+                    zIndex: '999999',
+                    display: 'none',
+                    padding: '0',
+                }});
+                doc.body.appendChild(button);
+            }}
 
-            [0, 80, 220, 500].forEach((delay) => window.setTimeout(scrollLatest, delay));
-        })();
+            const distanceFromBottom = () => Math.max(
+                0,
+                container.scrollHeight - container.clientHeight - container.scrollTop
+            );
+            const nearBottom = () => distanceFromBottom() <= threshold;
+            const syncButton = () => {{
+                button.style.display = state.autoFollow || nearBottom() ? 'none' : 'block';
+            }};
+            const scrollBottom = (behavior = 'smooth') => {{
+                state.programmaticUntil = Date.now() + 700;
+                container.scrollTo({{ top: container.scrollHeight, behavior }});
+                state.lastTop = Number(container.scrollTop || 0);
+                syncButton();
+            }};
+
+            state.scrollHandler = () => {{
+                const currentTop = Number(container.scrollTop || 0);
+                const userMovedUp = currentTop < state.lastTop - 2;
+                if (Date.now() > state.programmaticUntil && userMovedUp && !nearBottom()) {{
+                    state.autoFollow = false;
+                }} else if (nearBottom()) {{
+                    state.autoFollow = true;
+                }}
+                state.lastTop = currentTop;
+                syncButton();
+            }};
+            container.addEventListener('scroll', state.scrollHandler, {{ passive: true }});
+
+            button.onclick = () => {{
+                state.autoFollow = true;
+                scrollBottom('smooth');
+            }};
+
+            const followIfAllowed = () => {{
+                if (state.autoFollow || nearBottom()) {{
+                    state.autoFollow = true;
+                    scrollBottom('smooth');
+                }} else {{
+                    syncButton();
+                }}
+            }};
+            [0, 80, 220, 500].forEach((delay) =>
+                window.setTimeout(followIfAllowed, delay)
+            );
+
+            state.observer = new MutationObserver(followIfAllowed);
+            state.observer.observe(container, {{ childList: true, subtree: true }});
+            window.setTimeout(
+                () => state.observer && state.observer.disconnect(),
+                targetMode === 'status' ? 2400 : 1400,
+            );
+            syncButton();
+        }})();
         </script>
         """,
     )
+
+
+def _scroll_to_latest_chat_status() -> None:
+    """Follow a pending answer unless the user is reading older content."""
+    _render_hybrid_chat_scroll("status")
+
 
 def _scroll_to_chat_bottom_after_render() -> None:
-    """Move to the latest completed output without locking manual scrolling."""
-    _render_script_iframe(
-        """
-        <script>
-        (() => {
-            const scrollBottom = () => {
-                const container = window.parent.document.querySelector('.block-container');
-                if (!container) return;
-                container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
-            };
-
-            [0, 80, 220, 500].forEach((delay) => window.setTimeout(scrollBottom, delay));
-        })();
-        </script>
-        """,
-    )
+    """Follow completed output or expose a latest-answer control."""
+    _render_hybrid_chat_scroll("completed")
 
 def _render_message(message: dict[str, Any]) -> None:
     role = str(message.get("role") or "assistant")
@@ -636,7 +698,7 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
         )
         st.session_state["current_evaluation"] = copy.deepcopy(api_result.data)
         st.session_state["chat_stage"] = "complete"
-        st.session_state["panel_mode"] = "자연어 질의"
+        st.session_state["panel_mode"] = None
     except ValueError as exc:
         _append_message("assistant", str(exc), kind="error")
         st.session_state["chat_stage"] = "collecting"
@@ -987,41 +1049,10 @@ if stage == "complete":
         _reset_conversation()
         st.rerun()
 input_mode = st.session_state.get("panel_mode")
-if stage != "complete":
-    evaluation_col, chat_col = st.columns(2, gap="small")
-    with evaluation_col:
-        if st.button(
-            "메자닌 평가",
-            icon=":material/analytics:",
-            type="primary" if input_mode == "메자닌 평가" else "secondary",
-            width="stretch",
-            key="open_evaluation_mode",
-        ):
-            st.session_state["panel_mode"] = "메자닌 평가"
-            if st.session_state.get("direct_product_type") not in (
-                SELF_STOCK_PRODUCT,
-                THIRD_PARTY_PRODUCT,
-            ):
-                st.session_state["direct_product_type"] = SELF_STOCK_PRODUCT
-            st.rerun()
-    with chat_col:
-        if st.button(
-            "자연어 질의",
-            icon=":material/chat:",
-            type="primary" if input_mode == "자연어 질의" else "secondary",
-            width="stretch",
-            key="open_chat_mode",
-        ):
-            st.session_state["panel_mode"] = "자연어 질의"
-            st.rerun()
-    if input_mode == "메자닌 평가":
-        _render_direct_input(client, today_seoul)
+if stage != "complete" and input_mode == "메자닌 평가":
+    _render_direct_input(client, today_seoul)
 
-prompt = (
-    st.chat_input("질문을 입력해 주세요.")
-    if input_mode == "자연어 질의" or stage == "complete"
-    else None
-)
+prompt = st.chat_input("질문을 입력해 주세요.")
 if prompt:
     history = safe_chat_history(st.session_state["chat_messages"])
     _append_message("user", prompt)
@@ -1050,6 +1081,7 @@ if prompt:
         )
 
     if decision.route == ChatRoute.TYPE_D_BLOCKED:
+        st.session_state["panel_mode"] = None
         _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
     elif decision.route == ChatRoute.TYPE_B_EVALUATION:
         st.session_state["panel_mode"] = "메자닌 평가"
@@ -1057,6 +1089,7 @@ if prompt:
             st.session_state["chat_stage"] = "collecting"
         _append_message("assistant", EVALUATION_FORM_RESPONSE)
     else:
+        st.session_state["panel_mode"] = None
         _run_chatbase_query(prompt, route=decision.route, history=history)
 
     st.rerun()
