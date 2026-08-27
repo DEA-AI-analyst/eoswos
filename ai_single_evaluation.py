@@ -17,9 +17,19 @@ import streamlit.components.v1 as components
 import chat_intent_router as chat_router
 from chat_evaluation_context import (
     build_read_only_evaluation_context,
-    classify_evaluation_response_mode,
     safe_chat_history,
 )
+try:
+    from chat_evaluation_context import classify_evaluation_response_mode
+except ImportError:
+    def classify_evaluation_response_mode(prompt: str) -> str:
+        """Keep the app available during a mixed-version Streamlit refresh."""
+        normalized = " ".join(str(prompt or "").split())
+        if any(term in normalized for term in ("검토보고서", "평가보고서", "심사보고서", "보고서")):
+            return "report"
+        if any(term in normalized for term in ("검토의견", "평가의견", "심사의견")):
+            return "opinion"
+        return "default"
 from chat_state_guard import protect_evaluation_state
 from chat_intent_router import (
     BLOCKED_SCOPE_RESPONSE,
