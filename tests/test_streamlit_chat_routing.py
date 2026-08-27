@@ -220,7 +220,7 @@ def test_explicit_evaluation_request_reopens_form_after_completed_result(
 def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
-    assert "_scroll_to_chat_bottom_after_render()" in source
+    assert "_scroll_to_chat_bottom_after_render(" in source
     assert "__eoswosHybridChatScrollV1" in source
     assert "eoswos-latest-answer-button" in source
     assert "state.autoFollow" in source
@@ -229,7 +229,20 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "if (forceFollow)" in source
     assert "position: 'fixed'" in source
     assert "button.onclick" in source
+    assert "button.style.display = nearBottom() ? 'none' : 'block';" in source
+    assert "state.autoFollow || nearBottom() ? 'none' : 'block'" not in source
     assert "scrollBottom('smooth')" in source
+
+
+def test_prompt_submit_forces_follow_after_completed_output_is_rendered() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert 'st.session_state["_chat_force_follow_after_submit"] = True' in source
+    assert 'st.session_state.pop("_chat_force_follow_after_submit", False)' in source
+    assert "force_follow=force_follow_after_submit" in source
+    assert '_render_hybrid_chat_scroll("completed", force_follow=force_follow)' in source
+
+
 def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
@@ -249,7 +262,7 @@ def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
     assert ".chat-panel-header" in source
     assert "padding-right: 5.4rem;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
-    assert "margin: 0.2rem 0;" in source
+    assert "padding-bottom: 0.45rem;" in source
     assert source.count('class="chat-panel-header"') == 1
 
 
@@ -258,7 +271,11 @@ def test_panel_scrollbar_is_visible_only_while_content_is_hovered() -> None:
 
     assert ".block-container:hover" in source
     assert "scrollbar-width: thin;" in source
-    assert ".block-container:hover::-webkit-scrollbar" in source
+    assert "scrollbar-color: transparent transparent;" in source
+    assert "scrollbar-gutter: stable;" in source
+    assert ".block-container::-webkit-scrollbar" in source
+    assert ".block-container::-webkit-scrollbar-thumb" in source
+    assert ".block-container:hover::-webkit-scrollbar-thumb" in source
     assert "width: 8px;" in source
 
 

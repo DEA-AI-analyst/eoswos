@@ -181,27 +181,28 @@ st.markdown(
             padding-bottom: 6.5rem;
             overflow-x: hidden;
             overflow-y: auto;
-            scrollbar-width: none;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            scrollbar-gutter: stable;
         }
         .block-container::-webkit-scrollbar {
-            width: 0;
-            height: 0;
-        }
-        .block-container:hover {
-            scrollbar-width: thin;
-            scrollbar-color: #98a2b3 transparent;
-        }
-        .block-container:hover::-webkit-scrollbar {
             width: 8px;
+            height: 8px;
         }
-        .block-container:hover::-webkit-scrollbar-track {
+        .block-container::-webkit-scrollbar-track {
             background: transparent;
         }
-        .block-container:hover::-webkit-scrollbar-thumb {
+        .block-container::-webkit-scrollbar-thumb {
             border: 2px solid transparent;
             border-radius: 8px;
-            background: #98a2b3;
+            background: transparent;
             background-clip: padding-box;
+        }
+        .block-container:hover {
+            scrollbar-color: #98a2b3 transparent;
+        }
+        .block-container:hover::-webkit-scrollbar-thumb {
+            background: #98a2b3;
         }
         h1, h2, h3 { letter-spacing: 0 !important; }
         [data-testid="stAppViewContainer"] { background: #f7f9fc; }
@@ -332,10 +333,12 @@ st.markdown(
             font-size: 0.82rem;
         }
         .api-ready {
-            margin: 0.2rem 0;
+            margin: 0.2rem 0 0;
+            padding-bottom: 0.45rem;
             color: #137333;
             font-size: 0.78rem;
             font-weight: 600;
+            line-height: 1.35;
         }
         .result-summary div { min-width: 0; }
         .result-summary span {
@@ -541,6 +544,7 @@ def _reset_conversation() -> None:
     st.session_state["chat_stage"] = "collecting"
     st.session_state["panel_mode"] = None
     st.session_state["current_evaluation"] = None
+    st.session_state.pop("_chat_force_follow_after_submit", None)
 
 
 def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -> None:
@@ -660,7 +664,7 @@ def _render_hybrid_chat_scroll(
             );
             const nearBottom = () => distanceFromBottom() <= threshold;
             const syncButton = () => {{
-                button.style.display = state.autoFollow || nearBottom() ? 'none' : 'block';
+                button.style.display = nearBottom() ? 'none' : 'block';
             }};
             const scrollBottom = (behavior = 'smooth') => {{
                 state.programmaticUntil = Date.now() + 700;
@@ -721,9 +725,9 @@ def _scroll_to_latest_chat_status() -> None:
     _render_hybrid_chat_scroll("status", force_follow=True)
 
 
-def _scroll_to_chat_bottom_after_render() -> None:
+def _scroll_to_chat_bottom_after_render(*, force_follow: bool = False) -> None:
     """Follow completed output or expose a latest-answer control."""
-    _render_hybrid_chat_scroll("completed")
+    _render_hybrid_chat_scroll("completed", force_follow=force_follow)
 
 def _render_message(message: dict[str, Any]) -> None:
     role = str(message.get("role") or "assistant")
@@ -1105,8 +1109,13 @@ today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()
 for chat_message in st.session_state["chat_messages"]:
     _render_message(chat_message)
 
+force_follow_after_submit = bool(
+    st.session_state.pop("_chat_force_follow_after_submit", False)
+)
 if len(st.session_state["chat_messages"]) > 1:
-    _scroll_to_chat_bottom_after_render()
+    _scroll_to_chat_bottom_after_render(
+        force_follow=force_follow_after_submit,
+    )
 
 stage = st.session_state.get("chat_stage")
 
@@ -1126,6 +1135,7 @@ prompt = st.chat_input("질문을 입력해 주세요.")
 if prompt:
     history = safe_chat_history(st.session_state["chat_messages"])
     _append_message("user", prompt)
+    st.session_state["_chat_force_follow_after_submit"] = True
     current_evaluation = st.session_state.get("current_evaluation")
     has_current_evaluation = isinstance(current_evaluation, dict)
     local_decision = route_chat_message(
