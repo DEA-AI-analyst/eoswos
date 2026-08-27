@@ -23,7 +23,10 @@ from chat_intent_router import (
     BLOCKED_SCOPE_RESPONSE,
     EVALUATION_FORM_RESPONSE,
     ChatRoute,
+    build_ai_intent_prompt,
+    parse_ai_intent_response,
     route_chat_message,
+    should_resolve_route_with_ai,
 )
 from chatbase_client import (
     ChatbaseClient,
@@ -616,6 +619,55 @@ def _run_chatbase_query(
         )
 
 
+def _resolve_chat_route(
+    prompt: str,
+    *,
+    has_current_evaluation: bool,
+):
+    """Resolve A/B ambiguity with AI and fail closed to local routing."""
+
+    fallback = route_chat_message(
+        prompt,
+        has_current_evaluation=has_current_evaluation,
+    )
+    if not should_resolve_route_with_ai(prompt, fallback):
+        return fallback
+
+    api_key = _setting("CHATBASE_API_KEY")
+    agent_id = _setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID")
+    current_evaluation = copy.deepcopy(
+        st.session_state.get("current_evaluation")
+    )
+    resolved = None
+    try:
+        chatbase = _build_chatbase_client(api_key, agent_id)
+        with st.spinner("요청 유형을 확인 중입니다."):
+            _scroll_to_latest_chat_status()
+            response = chatbase.ask(
+                build_ai_intent_prompt(
+                    prompt,
+                    has_current_evaluation=has_current_evaluation,
+                )
+            )
+        resolved = parse_ai_intent_response(
+            response.text,
+            has_current_evaluation=has_current_evaluation,
+        )
+    except (ChatbaseConfigurationError, ChatbaseError):
+        resolved = None
+    except Exception:
+        resolved = None
+
+    protected_evaluation, changed = protect_evaluation_state(
+        current_evaluation,
+        st.session_state.get("current_evaluation"),
+    )
+    if changed:
+        st.session_state["current_evaluation"] = protected_evaluation
+        return fallback
+    return resolved or fallback
+
+
 def _direct_submission_message(draft: dict[str, Any]) -> str:
     product_label = {
         SELF_STOCK_PRODUCT: "CB / BW / EB(자기주식)",
@@ -871,7 +923,7 @@ if prompt:
     history = safe_chat_history(st.session_state["chat_messages"])
     _append_message("user", prompt)
     current_evaluation = st.session_state.get("current_evaluation")
-    decision = route_chat_message(
+    decision = _resolve_chat_route(
         prompt,
         has_current_evaluation=isinstance(current_evaluation, dict),
     )

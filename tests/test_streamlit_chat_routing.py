@@ -35,6 +35,10 @@ def _app(monkeypatch):
             return _FakeResponse({"status": "ready", "model_mode": "FROZEN_REFERENCE"})
         if "chatbase.co/api/v1/chat" in url:
             calls["chatbase"] += 1
+            payload = json.loads(request.data.decode("utf-8"))
+            message = payload["messages"][-1]["content"]
+            if "[EOSWOS_INTENT_ROUTER_V1]" in message:
+                return _FakeResponse({"text": "TYPE_B_EVALUATION"})
             return _FakeResponse({"text": "Chatbase 테스트 답변"})
         if url.endswith("/evaluate/single"):
             calls["evaluate"] += 1
@@ -83,11 +87,44 @@ def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatc
     at.chat_input[0].set_value(prompt).run(timeout=10)
 
     assert not at.exception
-    assert calls["chatbase"] == 0
+    assert calls["chatbase"] == 1
     assert calls["evaluate"] == 0
     assert at.session_state["panel_mode"] == "메자닌 평가"
     assert dict(at.session_state["evaluation_draft"]) == {}
     assert any(button.label == "평가시작" for button in at.button)
+
+
+def test_short_company_evaluation_request_opens_form(monkeypatch) -> None:
+    at, calls = _app(monkeypatch)
+    _button(at, "자연어 질의").click().run(timeout=10)
+    at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] == "메자닌 평가"
+    assert dict(at.session_state["evaluation_draft"]) == {}
+    assert any(button.label == "평가시작" for button in at.button)
+
+
+def test_ai_router_failure_uses_safe_local_form_fallback(monkeypatch) -> None:
+    at, calls = _app(monkeypatch)
+
+    def fail_router(*args, **kwargs):
+        raise RuntimeError("private routing failure C:/private/router.py:41")
+
+    monkeypatch.setattr("chatbase_client.ChatbaseClient.ask", fail_router)
+    _button(at, "자연어 질의").click().run(timeout=10)
+    at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 0
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] == "메자닌 평가"
+    assert any(button.label == "평가시작" for button in at.button)
+    public_text = " ".join(str(item.value) for item in at.error)
+    assert "private" not in public_text
+    assert "C:/" not in public_text
 
 
 def test_blocked_request_never_calls_external_chat(monkeypatch) -> None:

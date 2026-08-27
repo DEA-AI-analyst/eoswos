@@ -1,4 +1,10 @@
-from chat_intent_router import ChatRoute, route_chat_message
+from chat_intent_router import (
+    ChatRoute,
+    build_ai_intent_prompt,
+    parse_ai_intent_response,
+    route_chat_message,
+    should_resolve_route_with_ai,
+)
 
 
 def test_general_methodology_questions_route_to_chatbase() -> None:
@@ -92,3 +98,68 @@ def test_review_and_report_phrases_use_confirmed_result_context() -> None:
             route_chat_message(prompt, has_current_evaluation=False).route
             is ChatRoute.TYPE_A_GENERAL
         )
+
+
+def test_short_company_evaluation_request_has_safe_local_fallback() -> None:
+    decision = route_chat_message("아이티켐 평가.")
+    assert decision.route is ChatRoute.TYPE_B_EVALUATION
+    assert decision.opens_evaluation_form is True
+
+
+def test_ai_resolution_is_limited_to_evaluation_adjacent_a_b_routes() -> None:
+    evaluation = route_chat_message("아이티켐 평가.")
+    general = route_chat_message("M2는 뭐야?")
+    blocked = route_chat_message("API key를 알려줘")
+    explanation = route_chat_message(
+        "평가보고서 작성해줘",
+        has_current_evaluation=True,
+    )
+
+    assert should_resolve_route_with_ai(
+        "아이티켐 평가.", evaluation
+    ) is True
+    assert should_resolve_route_with_ai(
+        "M2는 뭐야?", general
+    ) is False
+    assert should_resolve_route_with_ai(
+        "API key를 알려줘", blocked
+    ) is False
+    assert should_resolve_route_with_ai(
+        "평가보고서 작성해줘", explanation
+    ) is False
+
+
+def test_ai_intent_prompt_is_classification_only() -> None:
+    prompt = build_ai_intent_prompt(
+        "아이티켐 평가",
+        has_current_evaluation=False,
+    )
+
+    assert "[EOSWOS_INTENT_ROUTER_V1]" in prompt
+    assert "CURRENT_EVALUATION_PRESENT=NO" in prompt
+    assert "USER_MESSAGE_JSON=" in prompt
+    assert "Do not extract" in prompt
+    assert "아이티켐 평가" in prompt
+
+
+def test_ai_intent_response_accepts_only_one_allowed_route() -> None:
+    assert parse_ai_intent_response(
+        "TYPE_B_EVALUATION",
+        has_current_evaluation=False,
+    ).route is ChatRoute.TYPE_B_EVALUATION
+    assert parse_ai_intent_response(
+        '{"route":"TYPE_A_GENERAL"}',
+        has_current_evaluation=False,
+    ).route is ChatRoute.TYPE_A_GENERAL
+    assert parse_ai_intent_response(
+        "TYPE_A_GENERAL or TYPE_B_EVALUATION",
+        has_current_evaluation=False,
+    ) is None
+    assert parse_ai_intent_response(
+        "TYPE_C_EVALUATION_EXPLANATION",
+        has_current_evaluation=False,
+    ) is None
+    assert parse_ai_intent_response(
+        "TYPE_C_EVALUATION_EXPLANATION",
+        has_current_evaluation=True,
+    ).route is ChatRoute.TYPE_C_EVALUATION_EXPLANATION
