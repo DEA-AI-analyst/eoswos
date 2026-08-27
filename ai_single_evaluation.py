@@ -933,14 +933,21 @@ if prompt:
     history = safe_chat_history(st.session_state["chat_messages"])
     _append_message("user", prompt)
     current_evaluation = st.session_state.get("current_evaluation")
-    decision = _resolve_chat_route(
-        prompt,
-        has_current_evaluation=isinstance(current_evaluation, dict),
-    )
+    has_current_evaluation = isinstance(current_evaluation, dict)
+    if chat_router.is_explicit_evaluation_request(prompt):
+        decision = route_chat_message(
+            prompt,
+            has_current_evaluation=has_current_evaluation,
+        )
+    else:
+        decision = _resolve_chat_route(
+            prompt,
+            has_current_evaluation=has_current_evaluation,
+        )
 
-    if decision.route is ChatRoute.TYPE_D_BLOCKED:
+    if decision.route == ChatRoute.TYPE_D_BLOCKED:
         _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
-    elif decision.route is ChatRoute.TYPE_B_EVALUATION:
+    elif decision.route == ChatRoute.TYPE_B_EVALUATION:
         st.session_state["panel_mode"] = "메자닌 평가"
         if st.session_state.get("chat_stage") == "complete":
             st.session_state["chat_stage"] = "collecting"

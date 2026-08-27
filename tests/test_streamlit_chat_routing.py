@@ -202,6 +202,25 @@ def test_completed_evaluation_shows_new_evaluation_and_chat_input(monkeypatch) -
     assert len(at.chat_input) == 1
 
 
+def test_explicit_evaluation_request_reopens_form_after_completed_result(
+    monkeypatch,
+) -> None:
+    at, calls = _app(monkeypatch)
+    at.session_state["chat_stage"] = "complete"
+    at.session_state["panel_mode"] = "자연어 질의"
+    at.session_state["current_evaluation"] = {"m_grade": "M3"}
+    at.run(timeout=10)
+
+    at.chat_input[0].set_value("평가.").run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 0
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] == "메자닌 평가"
+    assert at.session_state["chat_stage"] == "collecting"
+    assert any(button.label == "평가시작" for button in at.button)
+
+
 def test_completed_output_requests_bottom_scroll_only() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 

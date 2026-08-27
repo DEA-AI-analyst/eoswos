@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
 
@@ -137,6 +138,24 @@ _AI_ROUTE_TOKENS = {
 }
 
 
+def _normalize_route_text(text: str) -> str:
+    """Normalize user text before deterministic intent matching."""
+
+    normalized = unicodedata.normalize("NFKC", str(text or ""))
+    normalized = normalized.replace("\u200b", "").replace("\ufeff", "")
+    return " ".join(normalized.strip().split())
+
+
+def is_explicit_evaluation_request(text: str) -> bool:
+    """Return whether text unambiguously requests the evaluation form."""
+
+    normalized = _normalize_route_text(text).lower()
+    return any(
+        re.search(pattern, normalized, re.IGNORECASE)
+        for pattern in _EXPLICIT_EVALUATION_REQUEST_PATTERNS
+    )
+
+
 def route_chat_message(
     text: str,
     *,
@@ -144,7 +163,7 @@ def route_chat_message(
 ) -> RouteDecision:
     """Classify intent only; never extract or infer evaluation field values."""
 
-    normalized = " ".join(str(text or "").strip().split())
+    normalized = _normalize_route_text(text)
     lowered = normalized.lower()
 
     if any(term in lowered for term in _BLOCKED_TERMS):
@@ -179,13 +198,10 @@ def should_resolve_route_with_ai(
     }:
         return False
 
-    normalized = " ".join(str(text or "").strip().split()).lower()
+    normalized = _normalize_route_text(text).lower()
     if (
-        deterministic_decision.route is ChatRoute.TYPE_B_EVALUATION
-        and any(
-            re.search(pattern, normalized, re.IGNORECASE)
-            for pattern in _EXPLICIT_EVALUATION_REQUEST_PATTERNS
-        )
+        deterministic_decision.route == ChatRoute.TYPE_B_EVALUATION
+        and is_explicit_evaluation_request(normalized)
     ):
         return False
     return any(term in normalized for term in _AI_ROUTING_TRIGGER_TERMS)

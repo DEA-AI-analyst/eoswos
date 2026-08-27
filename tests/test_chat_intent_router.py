@@ -1,6 +1,7 @@
 from chat_intent_router import (
     ChatRoute,
     build_ai_intent_prompt,
+    is_explicit_evaluation_request,
     parse_ai_intent_response,
     route_chat_message,
     should_resolve_route_with_ai,
@@ -105,6 +106,17 @@ def test_short_company_evaluation_request_has_safe_local_fallback() -> None:
         decision = route_chat_message(prompt)
         assert decision.route is ChatRoute.TYPE_B_EVALUATION
         assert decision.opens_evaluation_form is True
+
+
+def test_explicit_evaluation_request_normalizes_unicode_and_hidden_marks() -> None:
+    prompts = (
+        "평가.",
+        "평가．",
+        "\u200b평가.\ufeff",
+    )
+    for prompt in prompts:
+        assert is_explicit_evaluation_request(prompt) is True
+        assert route_chat_message(prompt).route is ChatRoute.TYPE_B_EVALUATION
 
 
 def test_ai_resolution_is_limited_to_evaluation_adjacent_a_b_routes() -> None:
