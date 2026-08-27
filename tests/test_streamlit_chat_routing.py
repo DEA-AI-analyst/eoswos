@@ -231,8 +231,20 @@ def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert 'iframe = getattr(st, "iframe", None)' in source
-    assert 'iframe(source, width="content", height=1, tab_index=-1)' in source
+    assert 'iframe(source, width=1, height=1, tab_index=-1)' in source
+    assert '[data-testid="stIFrame"] iframe[height="1"]' in source
     assert "    components.html(" not in source
+
+def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert '[data-testid="stElementContainer"]:has(.chat-panel-header)' in source
+    assert "position: sticky !important;" in source
+    assert "top: 0;" in source
+    assert ".chat-panel-header" in source
+    assert "padding-right: 5.4rem;" in source
+    assert source.count('class="chat-panel-header"') == 1
+
 
 def test_same_underlying_display_uses_standard_korean_reference() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")

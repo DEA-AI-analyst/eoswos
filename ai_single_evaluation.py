@@ -275,7 +275,33 @@ st.markdown(
             font-weight: 650;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
+        [data-testid="stElementContainer"]:has(
+            [data-testid="stIFrame"] iframe[height="1"]
+        ) {
+            position: fixed !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
 
+        [data-testid="stElementContainer"]:has(.chat-panel-header) {
+            position: sticky !important;
+            top: 0;
+            z-index: 20;
+            margin: -0.8rem -0.2rem 0.7rem;
+            padding: 0.8rem 0.2rem 0.65rem;
+            border-bottom: 1px solid #dfe6f0;
+            background: rgba(247, 249, 252, 0.98);
+            backdrop-filter: blur(8px);
+        }
+        .chat-panel-header {
+            padding-right: 5.4rem;
+        }
         .chat-title {
             padding: 0.25rem 0 0.1rem;
         }
@@ -292,7 +318,7 @@ st.markdown(
             font-size: 0.82rem;
         }
         .api-ready {
-            margin: 0.2rem 0 0.7rem;
+            margin: 0.2rem 0 0;
             color: #137333;
             font-size: 0.78rem;
             font-weight: 600;
@@ -513,7 +539,7 @@ def _render_script_iframe(source: str) -> None:
     """Run trusted UI script with the current Streamlit iframe API."""
     iframe = getattr(st, "iframe", None)
     if callable(iframe):
-        iframe(source, width="content", height=1, tab_index=-1)
+        iframe(source, width=1, height=1, tab_index=-1)
         return
 
     # Compatibility for local Streamlit versions released before st.iframe.
@@ -1000,16 +1026,6 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
     st.rerun()
 
 
-st.markdown(
-    """
-    <div class="chat-title">
-        <strong>EosWos AI</strong>
-        <span>메자닌 신규업체 단건평가</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 base_url = _setting("MEZZ_API_BASE_URL")
 token = _setting("MEZZ_API_TOKEN")
 
@@ -1025,7 +1041,17 @@ if health.get("status") != "ready":
     st.stop()
 
 st.markdown(
-    f'<div class="api-ready">API ready · {_escape(health.get("model_mode", "-"))}</div>',
+    f"""
+    <div class="chat-panel-header">
+        <div class="chat-title">
+            <strong>EosWos AI</strong>
+            <span>메자닌 신규업체 단건평가</span>
+        </div>
+        <div class="api-ready">
+            API ready · {_escape(health.get("model_mode", "-"))}
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
