@@ -187,6 +187,22 @@ st.markdown(
             width: 0;
             height: 0;
         }
+        .block-container:hover {
+            scrollbar-width: thin;
+            scrollbar-color: #98a2b3 transparent;
+        }
+        .block-container:hover::-webkit-scrollbar {
+            width: 8px;
+        }
+        .block-container:hover::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .block-container:hover::-webkit-scrollbar-thumb {
+            border: 2px solid transparent;
+            border-radius: 8px;
+            background: #98a2b3;
+            background-clip: padding-box;
+        }
         h1, h2, h3 { letter-spacing: 0 !important; }
         [data-testid="stAppViewContainer"] { background: #f7f9fc; }
         footer,
@@ -275,9 +291,7 @@ st.markdown(
             font-weight: 650;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
-        [data-testid="stElementContainer"]:has(
-            [data-testid="stIFrame"] iframe[height="1"]
-        ) {
+        [data-testid="stElementContainer"]:has([data-testid="stIFrame"]) {
             position: fixed !important;
             width: 0 !important;
             height: 0 !important;
@@ -318,7 +332,7 @@ st.markdown(
             font-size: 0.82rem;
         }
         .api-ready {
-            margin: 0.2rem 0 0;
+            margin: 0.2rem 0;
             color: #137333;
             font-size: 0.78rem;
             font-weight: 600;
@@ -536,7 +550,20 @@ def _append_message(role: str, content: str, kind: str = "text", **extra: Any) -
 
 
 def _render_script_iframe(source: str) -> None:
-    """Run trusted UI script with the current Streamlit iframe API."""
+    """Run a trusted UI script without adding visible page content."""
+    html = getattr(st, "html", None)
+    if callable(html):
+        try:
+            html(
+                source,
+                width="content",
+                unsafe_allow_javascript=True,
+            )
+            return
+        except TypeError:
+            # Streamlit < 1.56 does not expose unsafe JavaScript in st.html.
+            pass
+
     iframe = getattr(st, "iframe", None)
     if callable(iframe):
         iframe(source, width=1, height=1, tab_index=-1)
@@ -547,15 +574,28 @@ def _render_script_iframe(source: str) -> None:
 
     legacy_components.html(source, height=0, width=0)
 
-def _render_hybrid_chat_scroll(target_mode: str) -> None:
+def _render_hybrid_chat_scroll(
+    target_mode: str,
+    *,
+    force_follow: bool = False,
+) -> None:
     """Follow new output near the bottom and preserve deliberate upward reading."""
     mode = "status" if target_mode == "status" else "completed"
     _render_script_iframe(
         f"""
         <script>
         (() => {{
-            const doc = window.parent.document;
+            let doc = document;
+            try {{
+                if (window.parent && window.parent.document) {{
+                    doc = window.parent.document;
+                }}
+            }} catch (error) {{
+                doc = document;
+            }}
+            const hostWindow = doc.defaultView || window;
             const targetMode = {mode!r};
+            const forceFollow = {str(force_follow).lower()};
             const stateKey = '__eoswosHybridChatScrollV1';
             const buttonId = 'eoswos-latest-answer-button';
             const threshold = 96;
@@ -569,14 +609,14 @@ def _render_hybrid_chat_scroll(target_mode: str) -> None:
             ) || doc.scrollingElement;
             if (!container) return;
 
-            let state = window.parent[stateKey];
+            let state = hostWindow[stateKey];
             if (!state) {{
                 state = {{
                     autoFollow: true,
                     lastTop: Number(container.scrollTop || 0),
                     programmaticUntil: 0,
                 }};
-                window.parent[stateKey] = state;
+                hostWindow[stateKey] = state;
             }}
 
             if (state.container && state.scrollHandler) {{
@@ -655,6 +695,10 @@ def _render_hybrid_chat_scroll(target_mode: str) -> None:
                     syncButton();
                 }}
             }};
+            if (forceFollow) {{
+                state.autoFollow = true;
+                scrollBottom('smooth');
+            }}
             [0, 80, 220, 500].forEach((delay) =>
                 window.setTimeout(followIfAllowed, delay)
             );
@@ -673,8 +717,8 @@ def _render_hybrid_chat_scroll(target_mode: str) -> None:
 
 
 def _scroll_to_latest_chat_status() -> None:
-    """Follow a pending answer unless the user is reading older content."""
-    _render_hybrid_chat_scroll("status")
+    """Move to a pending answer after the user submits a new question."""
+    _render_hybrid_chat_scroll("status", force_follow=True)
 
 
 def _scroll_to_chat_bottom_after_render() -> None:
@@ -1044,7 +1088,7 @@ st.markdown(
     f"""
     <div class="chat-panel-header">
         <div class="chat-title">
-            <strong>EosWos AI</strong>
+            <strong>EosWos AI Agent</strong>
             <span>메자닌 신규업체 단건평가</span>
         </div>
         <div class="api-ready">

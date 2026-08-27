@@ -157,6 +157,7 @@ def test_chat_loading_status_requests_smooth_autoscroll() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert "_scroll_to_latest_chat_status()" in source
+    assert '_render_hybrid_chat_scroll("status", force_follow=True)' in source
     assert "MutationObserver" in source
     assert "scrollBottom('smooth')" in source
     assert source.index('_scroll_to_latest_chat_status()') < source.index(
@@ -224,15 +225,19 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "eoswos-latest-answer-button" in source
     assert "state.autoFollow" in source
     assert "userMovedUp" in source
+    assert "const hostWindow = doc.defaultView || window;" in source
+    assert "if (forceFollow)" in source
     assert "position: 'fixed'" in source
     assert "button.onclick" in source
     assert "scrollBottom('smooth')" in source
 def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
+    assert 'html = getattr(st, "html", None)' in source
+    assert "unsafe_allow_javascript=True" in source
     assert 'iframe = getattr(st, "iframe", None)' in source
     assert 'iframe(source, width=1, height=1, tab_index=-1)' in source
-    assert '[data-testid="stIFrame"] iframe[height="1"]' in source
+    assert ':has([data-testid="stIFrame"])' in source
     assert "    components.html(" not in source
 
 def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
@@ -243,7 +248,18 @@ def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
     assert "top: 0;" in source
     assert ".chat-panel-header" in source
     assert "padding-right: 5.4rem;" in source
+    assert "<strong>EosWos AI Agent</strong>" in source
+    assert "margin: 0.2rem 0;" in source
     assert source.count('class="chat-panel-header"') == 1
+
+
+def test_panel_scrollbar_is_visible_only_while_content_is_hovered() -> None:
+    source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
+
+    assert ".block-container:hover" in source
+    assert "scrollbar-width: thin;" in source
+    assert ".block-container:hover::-webkit-scrollbar" in source
+    assert "width: 8px;" in source
 
 
 def test_same_underlying_display_uses_standard_korean_reference() -> None:
