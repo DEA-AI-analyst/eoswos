@@ -221,10 +221,13 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert "_scroll_to_chat_bottom_after_render(" in source
-    assert "__eoswosHybridChatScrollV1" in source
+    assert "__eoswosHybridChatScrollV2" in source
     assert "eoswos-latest-answer-button" in source
     assert "state.autoFollow" in source
     assert "userMovedUp" in source
+    assert "const candidateDocuments = [document];" in source
+    assert "candidate.querySelector('.block-container')" in source
+    assert "Cross-origin parents are intentionally ignored." in source
     assert "const hostWindow = doc.defaultView || window;" in source
     assert "if (forceFollow)" in source
     assert "position: 'fixed'" in source

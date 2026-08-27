@@ -583,18 +583,23 @@ def _render_hybrid_chat_scroll(
         f"""
         <script>
         (() => {{
-            let doc = document;
+            const candidateDocuments = [document];
             try {{
-                if (window.parent && window.parent.document) {{
-                    doc = window.parent.document;
+                if (window.parent && window.parent !== window && window.parent.document) {{
+                    candidateDocuments.push(window.parent.document);
                 }}
             }} catch (error) {{
-                doc = document;
+                // Cross-origin parents are intentionally ignored.
             }}
+            const doc = candidateDocuments.find((candidate) =>
+                candidate.querySelector('.block-container')
+            ) || candidateDocuments.find((candidate) =>
+                candidate.querySelector('[data-testid="stMain"]')
+            ) || document;
             const hostWindow = doc.defaultView || window;
             const targetMode = {mode!r};
             const forceFollow = {str(force_follow).lower()};
-            const stateKey = '__eoswosHybridChatScrollV1';
+            const stateKey = '__eoswosHybridChatScrollV2';
             const buttonId = 'eoswos-latest-answer-button';
             const threshold = 24;
             const blockContainer = doc.querySelector('.block-container');
