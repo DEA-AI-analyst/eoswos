@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import html
+import inspect
 import os
 from datetime import datetime
 from pathlib import Path
@@ -16,7 +17,7 @@ import streamlit.components.v1 as components
 
 import chat_intent_router as chat_router
 from chat_evaluation_context import (
-    build_read_only_evaluation_context,
+    build_read_only_evaluation_context as _build_read_only_evaluation_context,
     safe_chat_history,
 )
 try:
@@ -29,7 +30,28 @@ except ImportError:
             return "report"
         if any(term in normalized for term in ("검토의견", "평가의견", "심사의견")):
             return "opinion"
-        return "default"
+        return "explanation"
+
+
+_CONTEXT_SUPPORTS_RESPONSE_MODE = (
+    "response_mode" in inspect.signature(_build_read_only_evaluation_context).parameters
+)
+
+
+def build_read_only_evaluation_context(
+    current_evaluation: dict[str, Any] | None,
+    *,
+    response_mode: str = "explanation",
+) -> dict[str, Any] | None:
+    """Call either the current or immediately preceding context helper safely."""
+    if _CONTEXT_SUPPORTS_RESPONSE_MODE:
+        return _build_read_only_evaluation_context(
+            current_evaluation,
+            response_mode=response_mode,
+        )
+    return _build_read_only_evaluation_context(current_evaluation)
+
+
 from chat_state_guard import protect_evaluation_state
 from chat_intent_router import (
     BLOCKED_SCOPE_RESPONSE,
