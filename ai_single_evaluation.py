@@ -306,14 +306,7 @@ st.markdown(
         }
 
         [data-testid="stElementContainer"]:has(.chat-panel-header) {
-            position: sticky !important;
-            top: 0;
-            z-index: 20;
-            margin: -0.8rem -0.2rem 0.7rem;
-            padding: 0.8rem 0.2rem 0.65rem;
-            border-bottom: 1px solid #dfe6f0;
-            background: rgba(247, 249, 252, 0.98);
-            backdrop-filter: blur(8px);
+            margin-bottom: 0.7rem;
         }
         .chat-panel-header {
             padding-right: 5.4rem;
@@ -603,18 +596,11 @@ def _render_hybrid_chat_scroll(
             const forceFollow = {str(force_follow).lower()};
             const stateKey = '__eoswosHybridChatScrollV1';
             const buttonId = 'eoswos-latest-answer-button';
-            const threshold = 96;
+            const threshold = 24;
             const blockContainer = doc.querySelector('.block-container');
-            const candidates = [
-                blockContainer,
-                doc.scrollingElement,
-                doc.querySelector('[data-testid="stMain"]'),
-            ];
-            const container = candidates.find((node) => {{
-                if (!node || node.scrollHeight <= node.clientHeight + 4) return false;
-                const style = hostWindow.getComputedStyle(node);
-                return ['auto', 'scroll', 'overlay'].includes(style.overflowY);
-            }}) || blockContainer || doc.scrollingElement;
+            const container = blockContainer
+                || doc.querySelector('[data-testid="stMain"]')
+                || doc.scrollingElement;
             if (!container) return;
 
             let state = hostWindow[stateKey];
@@ -652,10 +638,12 @@ def _render_hybrid_chat_scroll(
                     background: '#ffffff',
                     color: '#2563eb',
                     fontSize: '22px',
-                    lineHeight: '36px',
+                    lineHeight: '1',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     cursor: 'pointer',
                     boxShadow: '0 5px 16px rgba(15, 23, 42, 0.18)',
-                    zIndex: '999999',
+                    zIndex: '2147483647',
                     display: 'none',
                     padding: '0',
                 }});
@@ -666,9 +654,13 @@ def _render_hybrid_chat_scroll(
                 0,
                 container.scrollHeight - container.clientHeight - container.scrollTop
             );
+            const canScroll = () => container.scrollHeight > container.clientHeight + 8;
             const nearBottom = () => distanceFromBottom() <= threshold;
             const syncButton = () => {{
-                button.style.display = nearBottom() ? 'none' : 'block';
+                const visible = canScroll() && !nearBottom();
+                button.style.setProperty('display', visible ? 'flex' : 'none', 'important');
+                button.style.setProperty('visibility', visible ? 'visible' : 'hidden', 'important');
+                button.style.setProperty('opacity', visible ? '1' : '0', 'important');
             }};
             const scrollBottom = (behavior = 'smooth') => {{
                 state.programmaticUntil = Date.now() + 1000;

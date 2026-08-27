@@ -229,10 +229,12 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "if (forceFollow)" in source
     assert "position: 'fixed'" in source
     assert "button.onclick" in source
-    assert "button.style.display = nearBottom() ? 'none' : 'block';" in source
+    assert "const canScroll = () => container.scrollHeight > container.clientHeight + 8;" in source
+    assert "visible ? 'flex' : 'none'" in source
+    assert "zIndex: '2147483647'" in source
     assert "state.autoFollow || nearBottom() ? 'none' : 'block'" not in source
     assert "const blockContainer = doc.querySelector('.block-container');" in source
-    assert "hostWindow.getComputedStyle(node)" in source
+    assert "const threshold = 24;" in source
     assert "scrollBottom('smooth')" in source
     assert "forceFollow ? () => scrollBottom('auto') : followIfAllowed" in source
 
@@ -256,12 +258,12 @@ def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     assert ':has([data-testid="stIFrame"])' in source
     assert "    components.html(" not in source
 
-def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
+def test_ai_panel_header_uses_normal_flow_and_reserves_control_space() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
     assert '[data-testid="stElementContainer"]:has(.chat-panel-header)' in source
-    assert "position: sticky !important;" in source
-    assert "top: 0;" in source
+    assert "position: sticky !important;" not in source
+    assert "margin-bottom: 0.7rem;" in source
     assert ".chat-panel-header" in source
     assert "padding-right: 5.4rem;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
