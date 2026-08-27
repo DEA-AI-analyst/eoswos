@@ -17,6 +17,7 @@ import streamlit.components.v1 as components
 import chat_intent_router as chat_router
 from chat_evaluation_context import (
     build_read_only_evaluation_context,
+    classify_evaluation_response_mode,
     safe_chat_history,
 )
 from chat_state_guard import protect_evaluation_state
@@ -194,6 +195,52 @@ st.markdown(
         [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] ol {
             margin-left: 0 !important;
             padding-left: 1.15rem !important;
+        }
+        .evaluation-report-marker { display: none; }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker) {
+            border-color: #cfd9e8;
+            box-shadow: 0 2px 8px rgba(31, 79, 135, 0.06);
+        }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] {
+            color: #202939;
+            line-height: 1.65;
+        }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] h1,
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] h2,
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] h3 {
+            color: #1f4f87;
+            font-size: 1.02rem !important;
+            line-height: 1.45 !important;
+            margin: 1.05rem 0 0.45rem !important;
+            padding-bottom: 0.28rem;
+            border-bottom: 1px solid #dbe4f0;
+        }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin: 0.55rem 0 0.85rem;
+            font-size: 0.79rem;
+        }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] th,
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] td {
+            overflow-wrap: anywhere;
+            vertical-align: top;
+            padding: 0.42rem 0.5rem;
+            border: 1px solid #dbe4f0;
+        }
+        [data-testid="stChatMessage"]:has(.evaluation-report-marker)
+        [data-testid="stMarkdownContainer"] th {
+            color: #294e7a;
+            background: #f2f6fb;
+            font-weight: 650;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
         [data-testid="stHorizontalBlock"]:has(.st-key-open_evaluation_mode) {
@@ -526,6 +573,11 @@ def _render_message(message: dict[str, Any]) -> None:
         elif kind == "error":
             st.error(str(message.get("content") or "요청을 처리하지 못했습니다."))
         else:
+            if message.get("presentation") == "report":
+                st.markdown(
+                    '<span class="evaluation-report-marker"></span>',
+                    unsafe_allow_html=True,
+                )
             st.markdown(str(message.get("content") or ""))
 
 
@@ -575,8 +627,12 @@ def _run_chatbase_query(
     current_evaluation = copy.deepcopy(
         st.session_state.get("current_evaluation")
     )
+    response_mode = classify_evaluation_response_mode(prompt)
     context = (
-        build_read_only_evaluation_context(current_evaluation)
+        build_read_only_evaluation_context(
+            current_evaluation,
+            response_mode=response_mode,
+        )
         if route is ChatRoute.TYPE_C_EVALUATION_EXPLANATION
         else None
     )
@@ -600,7 +656,12 @@ def _run_chatbase_query(
                 "확정 평가결과 상태를 보호하기 위해 답변을 중단했습니다.",
                 code="STATE_INTEGRITY_ERROR",
             )
-        _append_message("assistant", response.text)
+        message_metadata: dict[str, Any] = {
+            "response_mode": response_mode,
+        }
+        if context is not None and response_mode == "report":
+            message_metadata["presentation"] = "report"
+        _append_message("assistant", response.text, **message_metadata)
     except ChatbaseConfigurationError:
         _append_message(
             "assistant",
