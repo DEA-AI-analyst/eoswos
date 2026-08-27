@@ -138,6 +138,7 @@ def test_missing_optional_router_helpers_use_local_fallback(monkeypatch) -> None
     )
     monkeypatch.setattr("chat_intent_router.build_ai_intent_prompt", None)
     monkeypatch.setattr("chat_intent_router.parse_ai_intent_response", None)
+    monkeypatch.setattr("chat_intent_router.is_explicit_evaluation_request", None)
     at, calls = _app(monkeypatch)
 
     _button(at, "자연어 질의").click().run(timeout=10)

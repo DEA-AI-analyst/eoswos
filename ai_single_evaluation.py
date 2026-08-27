@@ -934,11 +934,22 @@ if prompt:
     _append_message("user", prompt)
     current_evaluation = st.session_state.get("current_evaluation")
     has_current_evaluation = isinstance(current_evaluation, dict)
-    if chat_router.is_explicit_evaluation_request(prompt):
-        decision = route_chat_message(
-            prompt,
-            has_current_evaluation=has_current_evaluation,
-        )
+    local_decision = route_chat_message(
+        prompt,
+        has_current_evaluation=has_current_evaluation,
+    )
+    explicit_request_check = getattr(
+        chat_router,
+        "is_explicit_evaluation_request",
+        None,
+    )
+    if callable(explicit_request_check):
+        is_explicit_request = bool(explicit_request_check(prompt))
+    else:
+        is_explicit_request = local_decision.route == ChatRoute.TYPE_B_EVALUATION
+
+    if is_explicit_request:
+        decision = local_decision
     else:
         decision = _resolve_chat_route(
             prompt,
