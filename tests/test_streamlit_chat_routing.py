@@ -231,7 +231,10 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "button.onclick" in source
     assert "button.style.display = nearBottom() ? 'none' : 'block';" in source
     assert "state.autoFollow || nearBottom() ? 'none' : 'block'" not in source
+    assert "const blockContainer = doc.querySelector('.block-container');" in source
+    assert "hostWindow.getComputedStyle(node)" in source
     assert "scrollBottom('smooth')" in source
+    assert "forceFollow ? () => scrollBottom('auto') : followIfAllowed" in source
 
 
 def test_prompt_submit_forces_follow_after_completed_output_is_rendered() -> None:
@@ -262,7 +265,7 @@ def test_ai_panel_header_is_sticky_and_reserves_control_space() -> None:
     assert ".chat-panel-header" in source
     assert "padding-right: 5.4rem;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
-    assert "padding-bottom: 0.45rem;" in source
+    assert "padding-bottom: 0.65rem;" in source
     assert source.count('class="chat-panel-header"') == 1
 
 
@@ -272,7 +275,9 @@ def test_panel_scrollbar_is_visible_only_while_content_is_hovered() -> None:
     assert ".block-container:hover" in source
     assert "scrollbar-width: thin;" in source
     assert "scrollbar-color: transparent transparent;" in source
-    assert "scrollbar-gutter: stable;" in source
+    assert "overflow-y: scroll;" in source
+    assert "scrollbar-gutter: stable both-edges;" in source
+    assert "box-sizing: border-box;" in source
     assert ".block-container::-webkit-scrollbar" in source
     assert ".block-container::-webkit-scrollbar-thumb" in source
     assert ".block-container:hover::-webkit-scrollbar-thumb" in source

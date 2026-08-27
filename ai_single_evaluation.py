@@ -180,10 +180,11 @@ st.markdown(
             padding-top: 0.8rem;
             padding-bottom: 6.5rem;
             overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: scroll;
             scrollbar-width: thin;
             scrollbar-color: transparent transparent;
-            scrollbar-gutter: stable;
+            scrollbar-gutter: stable both-edges;
+            box-sizing: border-box;
         }
         .block-container::-webkit-scrollbar {
             width: 8px;
@@ -316,6 +317,7 @@ st.markdown(
         }
         .chat-panel-header {
             padding-right: 5.4rem;
+            padding-bottom: 0.65rem;
         }
         .chat-title {
             padding: 0.25rem 0 0.1rem;
@@ -334,7 +336,6 @@ st.markdown(
         }
         .api-ready {
             margin: 0.2rem 0 0;
-            padding-bottom: 0.45rem;
             color: #137333;
             font-size: 0.78rem;
             font-weight: 600;
@@ -603,14 +604,17 @@ def _render_hybrid_chat_scroll(
             const stateKey = '__eoswosHybridChatScrollV1';
             const buttonId = 'eoswos-latest-answer-button';
             const threshold = 96;
+            const blockContainer = doc.querySelector('.block-container');
             const candidates = [
-                doc.querySelector('[data-testid="stMain"]'),
-                doc.querySelector('.block-container'),
+                blockContainer,
                 doc.scrollingElement,
+                doc.querySelector('[data-testid="stMain"]'),
             ];
-            const container = candidates.find((node) =>
-                node && node.scrollHeight > node.clientHeight + 4
-            ) || doc.scrollingElement;
+            const container = candidates.find((node) => {{
+                if (!node || node.scrollHeight <= node.clientHeight + 4) return false;
+                const style = hostWindow.getComputedStyle(node);
+                return ['auto', 'scroll', 'overlay'].includes(style.overflowY);
+            }}) || blockContainer || doc.scrollingElement;
             if (!container) return;
 
             let state = hostWindow[stateKey];
@@ -667,8 +671,12 @@ def _render_hybrid_chat_scroll(
                 button.style.display = nearBottom() ? 'none' : 'block';
             }};
             const scrollBottom = (behavior = 'smooth') => {{
-                state.programmaticUntil = Date.now() + 700;
-                container.scrollTo({{ top: container.scrollHeight, behavior }});
+                state.programmaticUntil = Date.now() + 1000;
+                if (typeof container.scrollTo === 'function') {{
+                    container.scrollTo({{ top: container.scrollHeight, behavior }});
+                }} else {{
+                    container.scrollTop = container.scrollHeight;
+                }}
                 state.lastTop = Number(container.scrollTop || 0);
                 syncButton();
             }};
@@ -701,17 +709,23 @@ def _render_hybrid_chat_scroll(
             }};
             if (forceFollow) {{
                 state.autoFollow = true;
-                scrollBottom('smooth');
+                scrollBottom('auto');
             }}
-            [0, 80, 220, 500].forEach((delay) =>
-                window.setTimeout(followIfAllowed, delay)
+            const followDelays = forceFollow
+                ? [0, 80, 220, 500, 900]
+                : [0, 80, 220, 500];
+            followDelays.forEach((delay) =>
+                window.setTimeout(
+                    forceFollow ? () => scrollBottom('auto') : followIfAllowed,
+                    delay,
+                )
             );
 
             state.observer = new MutationObserver(followIfAllowed);
             state.observer.observe(container, {{ childList: true, subtree: true }});
             window.setTimeout(
                 () => state.observer && state.observer.disconnect(),
-                targetMode === 'status' ? 2400 : 1400,
+                targetMode === 'status' ? 2400 : 1800,
             );
             syncButton();
         }})();
