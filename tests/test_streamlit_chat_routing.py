@@ -127,6 +127,25 @@ def test_ai_router_failure_uses_safe_local_form_fallback(monkeypatch) -> None:
     assert "C:/" not in public_text
 
 
+def test_missing_optional_router_helpers_use_local_fallback(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "chat_intent_router.should_resolve_route_with_ai",
+        None,
+    )
+    monkeypatch.setattr("chat_intent_router.build_ai_intent_prompt", None)
+    monkeypatch.setattr("chat_intent_router.parse_ai_intent_response", None)
+    at, calls = _app(monkeypatch)
+
+    _button(at, "자연어 질의").click().run(timeout=10)
+    at.chat_input[0].set_value("아이티켐 평가.").run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 0
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] == "메자닌 평가"
+    assert any(button.label == "평가시작" for button in at.button)
+
+
 def test_blocked_request_never_calls_external_chat(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
     _button(at, "자연어 질의").click().run(timeout=10)

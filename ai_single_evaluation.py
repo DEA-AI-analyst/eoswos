@@ -14,6 +14,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+import chat_intent_router as chat_router
 from chat_evaluation_context import (
     build_read_only_evaluation_context,
     safe_chat_history,
@@ -23,10 +24,7 @@ from chat_intent_router import (
     BLOCKED_SCOPE_RESPONSE,
     EVALUATION_FORM_RESPONSE,
     ChatRoute,
-    build_ai_intent_prompt,
-    parse_ai_intent_response,
     route_chat_message,
-    should_resolve_route_with_ai,
 )
 from chatbase_client import (
     ChatbaseClient,
@@ -630,7 +628,19 @@ def _resolve_chat_route(
         prompt,
         has_current_evaluation=has_current_evaluation,
     )
-    if not should_resolve_route_with_ai(prompt, fallback):
+    should_resolve = getattr(
+        chat_router,
+        "should_resolve_route_with_ai",
+        None,
+    )
+    build_prompt = getattr(chat_router, "build_ai_intent_prompt", None)
+    parse_response = getattr(chat_router, "parse_ai_intent_response", None)
+    if not all(
+        callable(item)
+        for item in (should_resolve, build_prompt, parse_response)
+    ):
+        return fallback
+    if not should_resolve(prompt, fallback):
         return fallback
 
     api_key = _setting("CHATBASE_API_KEY")
@@ -644,12 +654,12 @@ def _resolve_chat_route(
         with st.spinner("요청 유형을 확인 중입니다."):
             _scroll_to_latest_chat_status()
             response = chatbase.ask(
-                build_ai_intent_prompt(
+                build_prompt(
                     prompt,
                     has_current_evaluation=has_current_evaluation,
                 )
             )
-        resolved = parse_ai_intent_response(
+        resolved = parse_response(
             response.text,
             has_current_evaluation=has_current_evaluation,
         )
