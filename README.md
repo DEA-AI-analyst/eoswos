@@ -30,8 +30,8 @@
 | `mezz_api_client.py` | EC2의 단건평가 API와 HTTPS로 통신하고 인증 헤더, 시간 측정, 오류 정제를 담당합니다. |
 | `code.xlsx` | 발행사와 기초자산 종목코드 검색형 풀다운에 사용하는 회사명 및 종목코드 목록입니다. |
 | `requirements.txt` | AI 패널의 Streamlit Cloud 배포에 필요한 추가 Python 패키지 목록입니다. |
-| `ai_widget.js` | eoswos.com 우측 하단 풍선, AI 패널 iframe, 닫기 버튼과 Escape 동작을 만듭니다. |
-| `ai_widget.css` | 풍선과 AI 패널의 크기, 위치, 반응형 화면, 애니메이션을 정의합니다. |
+| `ai_widget.js` | eoswos.com 우측 하단 풍선, AI 패널 iframe, 닫기 버튼, Escape 및 세 구역 크기 조절 동작을 만듭니다. |
+| `ai_widget.css` | 풍선과 AI 패널의 크기, 위치, 반응형 화면, 애니메이션 및 크기 조절 영역을 정의합니다. |
 | `index.html` | eoswos.com 정적 진입점입니다. 본 서비스와 AI 패널을 iframe으로 연결하고 SEO 및 방문 통계를 설정합니다. |
 | `CNAME` | GitHub Pages 사용자 도메인을 `eoswos.com`으로 연결합니다. |
 | `robots.txt` | 검색엔진 크롤링 허용 범위와 사이트맵 주소를 정의합니다. |

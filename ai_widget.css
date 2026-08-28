@@ -52,8 +52,9 @@
     right: 16px;
     bottom: 132px;
     z-index: 10019;
-    width: min(470px, calc(100vw - 32px));
-    height: min(760px, calc(100dvh - 160px));
+    width: min(var(--ai-panel-width, 470px), calc(100vw - 32px));
+    height: min(var(--ai-panel-height, 760px), calc(100dvh - 160px));
+    min-width: 360px;
     min-height: 420px;
     overflow: hidden;
     scrollbar-width: none;
@@ -78,6 +79,99 @@
     visibility: visible;
     pointer-events: auto;
     transform: translateY(0) scale(1);
+}
+
+.ai-panel-resize-shield {
+    position: fixed;
+    z-index: 10030;
+    inset: 0;
+    background: transparent;
+    touch-action: none;
+}
+
+.ai-panel-resize-shield[hidden] {
+    display: none;
+}
+
+.ai-panel-resize-handle {
+    position: absolute;
+    z-index: 5;
+    touch-action: none;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.ai-panel-resize-handle:hover,
+.ai-evaluation-panel.is-resizing .ai-panel-resize-handle {
+    opacity: 1;
+}
+
+.ai-panel-resize-left {
+    top: 18px;
+    bottom: 18px;
+    left: 0;
+    width: 10px;
+    cursor: ew-resize;
+}
+
+.ai-panel-resize-left::after {
+    position: absolute;
+    top: 32px;
+    bottom: 32px;
+    left: 3px;
+    width: 2px;
+    border-radius: 2px;
+    background: rgba(53, 111, 202, 0.62);
+    content: "";
+}
+
+.ai-panel-resize-top {
+    top: 0;
+    right: 18px;
+    left: 18px;
+    height: 10px;
+    cursor: ns-resize;
+}
+
+.ai-panel-resize-top::after {
+    position: absolute;
+    top: 3px;
+    right: 32px;
+    left: 32px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgba(53, 111, 202, 0.62);
+    content: "";
+}
+
+.ai-panel-resize-corner {
+    top: 0;
+    left: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+}
+
+.ai-panel-resize-corner::after {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid rgba(53, 111, 202, 0.68);
+    border-left: 2px solid rgba(53, 111, 202, 0.68);
+    border-radius: 2px 0 0;
+    content: "";
+}
+
+.ai-evaluation-panel.is-resizing iframe {
+    pointer-events: none;
+}
+
+html.ai-panel-resizing,
+html.ai-panel-resizing * {
+    cursor: var(--ai-panel-resize-cursor) !important;
+    user-select: none !important;
 }
 
 .ai-panel-control {
@@ -181,8 +275,13 @@
         left: 8px;
         width: auto;
         height: auto;
+        min-width: 0;
         min-height: 0;
         border-radius: 14px;
+    }
+
+    .ai-panel-resize-handle {
+        display: none;
     }
 
     .ai-panel-control {

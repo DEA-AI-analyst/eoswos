@@ -1,6 +1,13 @@
 (function () {
     "use strict";
 
+    const PANEL_SIZE_STORAGE_KEY = "eoswos.aiPanelSize.v1";
+    const DESKTOP_RESIZE_MEDIA = window.matchMedia("(min-width: 641px)");
+    const MIN_PANEL_WIDTH = 360;
+    const MIN_PANEL_HEIGHT = 420;
+    const PANEL_HORIZONTAL_GAP = 32;
+    const PANEL_VERTICAL_GAP = 160;
+
     const panel = document.createElement("section");
     panel.id = "ai-evaluation-panel";
     panel.className = "ai-evaluation-panel";
@@ -8,6 +15,9 @@
     panel.setAttribute("aria-label", "EOSWOS AI 메자닌 단건평가");
     panel.setAttribute("aria-hidden", "true");
     panel.innerHTML = [
+        '<div class="ai-panel-resize-handle ai-panel-resize-left" data-resize-mode="width" title="패널 가로 크기 조절" aria-hidden="true"></div>',
+        '<div class="ai-panel-resize-handle ai-panel-resize-top" data-resize-mode="height" title="패널 세로 크기 조절" aria-hidden="true"></div>',
+        '<div class="ai-panel-resize-handle ai-panel-resize-corner" data-resize-mode="both" title="패널 크기 조절" aria-hidden="true"></div>',
         '<button id="ai-panel-refresh" class="ai-panel-control ai-panel-refresh" type="button" aria-label="AI 패널 새로고침" title="AI 패널 새로고침">',
         '<span aria-hidden="true">&#x21bb;</span>',
         '</button>',
@@ -40,12 +50,161 @@
         '</svg>'
     ].join("");
 
-    document.body.append(panel, launcher);
+    const resizeShield = document.createElement("div");
+    resizeShield.className = "ai-panel-resize-shield";
+    resizeShield.hidden = true;
+    resizeShield.setAttribute("aria-hidden", "true");
+
+    document.body.append(panel, launcher, resizeShield);
 
     const frame = document.getElementById("ai-evaluation-frame");
     const loading = document.getElementById("ai-panel-loading");
     const closeButton = document.getElementById("ai-panel-close");
     const refreshButton = document.getElementById("ai-panel-refresh");
+    const resizeHandles = panel.querySelectorAll(".ai-panel-resize-handle");
+    let preferredPanelSize = readPreferredPanelSize();
+    let activeResize = null;
+
+    function readPreferredPanelSize() {
+        try {
+            const parsed = JSON.parse(window.localStorage.getItem(PANEL_SIZE_STORAGE_KEY) || "{}");
+            const size = {};
+
+            if (Number.isFinite(Number(parsed.width))) {
+                size.width = Math.max(MIN_PANEL_WIDTH, Math.round(Number(parsed.width)));
+            }
+            if (Number.isFinite(Number(parsed.height))) {
+                size.height = Math.max(MIN_PANEL_HEIGHT, Math.round(Number(parsed.height)));
+            }
+            return size;
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function savePreferredPanelSize() {
+        try {
+            window.localStorage.setItem(PANEL_SIZE_STORAGE_KEY, JSON.stringify(preferredPanelSize));
+        } catch (error) {
+            // The panel still resizes when browser storage is unavailable.
+        }
+    }
+
+    function applyPreferredPanelSize() {
+        if (Number.isFinite(preferredPanelSize.width)) {
+            panel.style.setProperty("--ai-panel-width", preferredPanelSize.width + "px");
+        }
+        if (Number.isFinite(preferredPanelSize.height)) {
+            panel.style.setProperty("--ai-panel-height", preferredPanelSize.height + "px");
+        }
+    }
+
+    function clamp(value, minimum, maximum) {
+        return Math.min(Math.max(value, minimum), maximum);
+    }
+
+    function panelSizeLimits() {
+        return {
+            maxWidth: Math.max(MIN_PANEL_WIDTH, window.innerWidth - PANEL_HORIZONTAL_GAP),
+            maxHeight: Math.max(MIN_PANEL_HEIGHT, window.innerHeight - PANEL_VERTICAL_GAP)
+        };
+    }
+
+    function resizeCursor(mode) {
+        if (mode === "width") {
+            return "ew-resize";
+        }
+        if (mode === "height") {
+            return "ns-resize";
+        }
+        return "nwse-resize";
+    }
+
+    function finishPanelResize(event) {
+        if (!activeResize || (event && event.pointerId !== activeResize.pointerId)) {
+            return;
+        }
+
+
+        window.removeEventListener("pointermove", movePanelResize);
+        window.removeEventListener("pointerup", finishPanelResize);
+        window.removeEventListener("pointercancel", finishPanelResize);
+        document.documentElement.classList.remove(
+            "ai-panel-resizing",
+            "ai-panel-resizing-width",
+            "ai-panel-resizing-height",
+            "ai-panel-resizing-both"
+        );
+        panel.classList.remove("is-resizing");
+        resizeShield.hidden = true;
+        resizeShield.style.removeProperty("cursor");
+        document.documentElement.style.removeProperty("--ai-panel-resize-cursor");
+        activeResize = null;
+        savePreferredPanelSize();
+    }
+
+    function movePanelResize(event) {
+        if (!activeResize || event.pointerId !== activeResize.pointerId) {
+            return;
+        }
+
+        event.preventDefault();
+        const limits = panelSizeLimits();
+        const width = clamp(
+            activeResize.startWidth + activeResize.startX - event.clientX,
+            MIN_PANEL_WIDTH,
+            limits.maxWidth
+        );
+        const height = clamp(
+            activeResize.startHeight + activeResize.startY - event.clientY,
+            MIN_PANEL_HEIGHT,
+            limits.maxHeight
+        );
+
+        if (activeResize.mode === "width" || activeResize.mode === "both") {
+            preferredPanelSize.width = Math.round(width);
+            panel.style.setProperty("--ai-panel-width", preferredPanelSize.width + "px");
+        }
+        if (activeResize.mode === "height" || activeResize.mode === "both") {
+            preferredPanelSize.height = Math.round(height);
+            panel.style.setProperty("--ai-panel-height", preferredPanelSize.height + "px");
+        }
+    }
+
+    function startPanelResize(event) {
+        if (!DESKTOP_RESIZE_MEDIA.matches || event.button !== 0) {
+            return;
+        }
+
+        event.preventDefault();
+        const handle = event.currentTarget;
+        const mode = handle.dataset.resizeMode;
+        const bounds = panel.getBoundingClientRect();
+
+        activeResize = {
+            mode: mode,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            startWidth: bounds.width,
+            startHeight: bounds.height
+        };
+
+
+        panel.classList.add("is-resizing");
+        document.documentElement.classList.add("ai-panel-resizing", "ai-panel-resizing-" + mode);
+        document.documentElement.style.setProperty("--ai-panel-resize-cursor", resizeCursor(mode));
+        resizeShield.style.cursor = resizeCursor(mode);
+        resizeShield.hidden = false;
+        window.addEventListener("pointermove", movePanelResize, { passive: false });
+        window.addEventListener("pointerup", finishPanelResize);
+        window.addEventListener("pointercancel", finishPanelResize);
+    }
+
+    applyPreferredPanelSize();
+    resizeHandles.forEach(function (handle) {
+        handle.addEventListener("pointerdown", startPanelResize);
+    });
 
     function loadFrame(forceRefresh) {
         let source = frame.dataset.src;
