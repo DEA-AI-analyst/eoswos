@@ -59,7 +59,28 @@ def test_agent_home_has_desktop_and_mobile_layouts() -> None:
     assert "grid-template-columns: 1fr" in HOME_CSS
 
 
-def test_first_commit_script_only_initializes_icons() -> None:
+def test_navigation_uses_the_same_five_route_allowlist() -> None:
+    route_block = re.search(
+        r"const ALLOWED_ROUTES = new Set\(\[(.*?)\]\);",
+        HOME_JS,
+        flags=re.DOTALL,
+    )
+    assert route_block is not None
+    routes = re.findall(r'"([a-z_]+)"', route_block.group(1))
+    assert routes == ["overview", "dea", "ml", "new_evaluation", "monitoring"]
+
+
+def test_navigation_forwards_only_normalized_routes_to_mcore() -> None:
     assert "lucide.createIcons" in HOME_JS
-    assert "data-mcore-route" not in HOME_JS
-    assert "searchParams" not in HOME_JS
+    assert 'ALLOWED_ROUTES.has(route) ? route : "overview"' in HOME_JS
+    assert 'document.querySelectorAll("[data-mcore-route]")' in HOME_JS
+    assert 'url.searchParams.set("view", normalizeRoute(route))' in HOME_JS
+    assert "showMcore(button.dataset.mcoreRoute)" in HOME_JS
+
+
+def test_navigation_preserves_home_return_and_browser_history() -> None:
+    assert 'returnButton.addEventListener("click"' in HOME_JS
+    assert 'window.addEventListener("popstate"' in HOME_JS
+    assert 'window.history.replaceState({ surface: "home" }, "", "#home")' in HOME_JS
+    assert "frameWrap.hidden = false" in HOME_JS
+    assert "frameWrap.hidden = true" in HOME_JS
