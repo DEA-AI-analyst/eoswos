@@ -634,8 +634,10 @@ def _render_hybrid_chat_scroll(
                 button.setAttribute('aria-label', '최신 답변으로 이동');
                 Object.assign(button.style, {{
                     position: 'fixed',
-                    right: '18px',
+                    left: '50%',
+                    right: 'auto',
                     bottom: '84px',
+                    transform: 'translateX(-50%)',
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
@@ -654,6 +656,12 @@ def _render_hybrid_chat_scroll(
                 }});
                 doc.body.appendChild(button);
             }}
+            Object.assign(button.style, {{
+                left: '50%',
+                right: 'auto',
+                bottom: '84px',
+                transform: 'translateX(-50%)',
+            }});
 
             const distanceFromBottom = () => Math.max(
                 0,

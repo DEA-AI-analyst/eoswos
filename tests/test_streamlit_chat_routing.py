@@ -231,6 +231,11 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "const hostWindow = doc.defaultView || window;" in source
     assert "if (forceFollow)" in source
     assert "position: 'fixed'" in source
+    assert "left: '50%'" in source
+    assert "right: 'auto'" in source
+    assert "bottom: '84px'" in source
+    assert "transform: 'translateX(-50%)'" in source
+    assert "right: '18px'" not in source
     assert "button.onclick" in source
     assert "const canScroll = () => container.scrollHeight > container.clientHeight + 8;" in source
     assert "visible ? 'flex' : 'none'" in source
