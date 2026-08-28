@@ -36,6 +36,20 @@ def test_ai_panel_resize_is_persistent_and_disabled_on_mobile() -> None:
     assert "@media (max-width: 640px)" in styles
     assert ".ai-panel-resize-handle {\n        display: none;\n    }" in styles
 
+
+def test_mobile_panel_fills_available_viewport_from_fixed_edges() -> None:
+    styles = (ROOT / "ai_widget.css").read_text(encoding="utf-8")
+
+    assert "top: max(8px, env(safe-area-inset-top));" in styles
+    assert "right: max(8px, env(safe-area-inset-right));" in styles
+    assert "bottom: max(126px, calc(118px + env(safe-area-inset-bottom)));" in styles
+    assert "left: max(8px, env(safe-area-inset-left));" in styles
+    assert "max-width: none;" in styles
+    assert "max-height: none;" in styles
+    assert "min-width: 0;" in styles
+    assert "min-height: 0;" in styles
+
+
 def test_resize_drag_shield_keeps_pointer_events_out_of_the_iframe() -> None:
     script = (ROOT / "ai_widget.js").read_text(encoding="utf-8")
     styles = (ROOT / "ai_widget.css").read_text(encoding="utf-8")
