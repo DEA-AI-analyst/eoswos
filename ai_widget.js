@@ -39,14 +39,13 @@
     launcher.id = "ai-evaluation-launcher";
     launcher.className = "ai-evaluation-launcher";
     launcher.type = "button";
-    launcher.setAttribute("aria-label", "AI 단건평가 열기");
+    launcher.setAttribute("aria-label", "AI Agent 열기");
     launcher.setAttribute("aria-controls", panel.id);
     launcher.setAttribute("aria-expanded", "false");
-    launcher.title = "AI 단건평가";
+    launcher.title = "AI Agent";
     launcher.innerHTML = [
-        '<svg class="icon-chat" viewBox="0 0 24 24" aria-hidden="true">',
-        '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>',
-        '</svg>',
+        '<span class="ai-launcher-label ai-launcher-label-desktop">AI Agent</span>',
+        '<span class="ai-launcher-label ai-launcher-label-mobile">AI</span>',
         '<svg class="icon-close" viewBox="0 0 24 24" aria-hidden="true">',
         '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
         '</svg>'
@@ -224,7 +223,7 @@
 
     function setPanelOpen(open) {
         launcher.setAttribute("aria-expanded", String(open));
-        launcher.setAttribute("aria-label", open ? "AI 단건평가 닫기" : "AI 단건평가 열기");
+        launcher.setAttribute("aria-label", open ? "AI Agent 닫기" : "AI Agent 열기");
         panel.setAttribute("aria-hidden", String(!open));
         panel.classList.toggle("is-open", open);
 
