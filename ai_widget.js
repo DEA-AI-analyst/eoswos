@@ -2,7 +2,9 @@
     "use strict";
 
     const PANEL_SIZE_STORAGE_KEY = "eoswos.aiPanelSize.v1";
-    const DESKTOP_RESIZE_MEDIA = window.matchMedia("(min-width: 641px)");
+    const DESKTOP_RESIZE_MEDIA = window.matchMedia(
+        "(min-width: 769px) and (hover: hover) and (pointer: fine)"
+    );
     const MIN_PANEL_WIDTH = 360;
     const MIN_PANEL_HEIGHT = 420;
     const PANEL_HORIZONTAL_GAP = 32;

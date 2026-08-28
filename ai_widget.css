@@ -260,7 +260,7 @@ html.ai-panel-resizing * {
     display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
     .ai-evaluation-launcher {
         right: 12px;
         bottom: 62px;

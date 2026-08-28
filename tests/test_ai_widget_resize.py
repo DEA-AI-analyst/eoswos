@@ -32,8 +32,11 @@ def test_ai_panel_resize_is_persistent_and_disabled_on_mobile() -> None:
 
     assert 'PANEL_SIZE_STORAGE_KEY = "eoswos.aiPanelSize.v1"' in script
     assert "window.localStorage.setItem" in script
-    assert 'window.matchMedia("(min-width: 641px)")' in script
-    assert "@media (max-width: 640px)" in styles
+    assert '"(min-width: 769px) and (hover: hover) and (pointer: fine)"' in script
+    assert (
+        "@media (max-width: 768px), "
+        "(hover: none) and (pointer: coarse) and (max-width: 1024px)"
+    ) in styles
     assert ".ai-panel-resize-handle {\n        display: none;\n    }" in styles
 
 
