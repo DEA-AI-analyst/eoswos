@@ -295,6 +295,11 @@ html.ai-panel-resizing * {
         border-radius: 50%;
     }
 
+    body.agent-home-active .ai-evaluation-launcher[aria-expanded="false"] {
+        right: max(6px, env(safe-area-inset-right));
+        bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
     .ai-launcher-label-desktop {
         display: none;
     }

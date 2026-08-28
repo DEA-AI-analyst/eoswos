@@ -57,6 +57,25 @@ def test_agent_home_has_desktop_and_mobile_layouts() -> None:
     assert "@media (max-width: 840px)" in HOME_CSS
     assert "@media (max-width: 560px)" in HOME_CSS
     assert "grid-template-columns: 1fr" in HOME_CSS
+    assert "margin: 0 auto clamp(29px, 4.5vh, 42px)" in HOME_CSS
+    assert "margin-bottom: 23px" in HOME_CSS
+
+
+def test_floating_launcher_is_the_only_agent_panel_entry_point() -> None:
+    assert "agent-home__agent-label" not in INDEX
+
+
+def test_monitoring_card_uses_a_supported_line_icon() -> None:
+    home = _home_markup()
+    assert 'data-lucide="refresh-cw"' in home
+    assert 'data-lucide="monitor-search"' not in home
+
+
+def test_mobile_agent_home_launcher_uses_reserved_bottom_space() -> None:
+    widget_css = (ROOT / "ai_widget.css").read_text(encoding="utf-8")
+    assert 'body.agent-home-active .ai-evaluation-launcher[aria-expanded="false"]' in widget_css
+    assert "right: max(6px, env(safe-area-inset-right));" in widget_css
+    assert "bottom: max(10px, env(safe-area-inset-bottom));" in widget_css
 
 
 def test_navigation_uses_the_same_five_route_allowlist() -> None:
