@@ -74,6 +74,7 @@ from mezz_evaluation_contract import (
     FIELD_LABELS,
     SELF_STOCK_PRODUCT,
     THIRD_PARTY_PRODUCT,
+    bps_provenance_display_rows,
     build_api_payload,
     missing_fields,
     validate_draft,
@@ -499,7 +500,7 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
             },
         )
 
-    with st.expander("평가 식별정보"):
+    with st.expander("상세 출처 보기"):
         st.write(f"요청 ID: `{result.get('request_id', '-')}`")
         st.write(f"평가기준일: `{result.get('price_basis_date', '-')}`")
         st.write(f"발행회사: {result.get('issuer_company', '-')}")
@@ -507,6 +508,9 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         if str(underlying_company).strip() == "좌동":
             underlying_company = "상동"
         st.write(f"기초자산: {underlying_company}")
+        st.markdown("**BPS 출처**")
+        for label, value in bps_provenance_display_rows(result):
+            st.write(f"{label}: {value}")
 
 
 def _initial_messages() -> list[dict[str, Any]]:

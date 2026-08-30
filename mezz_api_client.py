@@ -14,6 +14,13 @@ from urllib.parse import urlparse
 
 MAX_RESPONSE_BYTES = 2_000_000
 
+_SAFE_ERROR_MESSAGES = {
+    "BPS_CANONICAL_UNAVAILABLE": (
+        "BPS 기준정보를 확인할 수 없어 평가를 완료하지 못했습니다. "
+        "잠시 후 다시 시도해 주세요."
+    ),
+}
+
 
 class MezzApiConfigurationError(RuntimeError):
     """Raised when the server-side API configuration is incomplete."""
@@ -152,7 +159,11 @@ class MezzApiClient:
         except MezzApiError:
             pass
 
-        if status_code == 401:
+        if code in _SAFE_ERROR_MESSAGES:
+            # Ignore API detail text and show only a reviewed public message.
+            fields = []
+            message = _SAFE_ERROR_MESSAGES[code]
+        elif status_code == 401:
             message = "API 인증에 실패했습니다."
         elif status_code == 422:
             message = "입력값을 확인해 주세요."

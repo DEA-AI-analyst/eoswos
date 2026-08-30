@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import date
-from typing import Any
+from typing import Any, Literal, TypedDict, cast
 
 
 SELF_STOCK_PRODUCT = "CB/BW/EB(자기주식)"
@@ -64,6 +65,85 @@ FIELD_LABELS = {
     "ttm_years": "잔존만기",
     "issue_date": "발행일",
 }
+
+
+class BpsProvenanceReceipt(TypedDict, total=False):
+    """Optional API receipt copied without calculating or inferring any source."""
+
+    status: Literal[
+        "CANONICAL_CFS",
+        "OWNERS_EQUITY_CONTROLLED",
+        "EXPLICIT_OFS",
+    ]
+    fs_selected_date: str
+    fs_type: str
+    financial_entity: Literal["issuer", "underlying_issuer"]
+    scoring_source: Literal["DART_KRX"]
+    source_note: str
+
+
+_BPS_STATUS_LABELS = {
+    "CANONICAL_CFS": "연결재무제표 기준 (비지배지분 차감)",
+    "OWNERS_EQUITY_CONTROLLED": "지배기업 소유주지분 기준 (통제 대체)",
+    "EXPLICIT_OFS": "별도재무제표 기준",
+}
+_BPS_FS_TYPE_LABELS = {
+    "CFS": "연결재무제표(CFS)",
+    "OFS": "별도재무제표(OFS)",
+}
+_BPS_FINANCIAL_ENTITY_LABELS = {
+    "issuer": "발행사",
+    "underlying_issuer": "기초자산 발행사",
+}
+_BPS_SCORING_SOURCE_LABELS = {
+    "DART_KRX": "DART 재무정보 · KRX 상장주식수",
+}
+
+
+def bps_provenance_receipt(
+    response: Mapping[str, Any] | None,
+) -> BpsProvenanceReceipt | None:
+    """Return the optional API receipt unchanged; never derive missing fields."""
+
+    if not isinstance(response, Mapping):
+        return None
+    raw_receipt = response.get("bps_provenance")
+    if not isinstance(raw_receipt, Mapping):
+        return None
+    return cast(BpsProvenanceReceipt, dict(raw_receipt))
+
+
+def bps_provenance_display_rows(
+    response: Mapping[str, Any] | None,
+) -> list[tuple[str, str]]:
+    """Translate only documented receipt enums into user-facing labels."""
+
+    receipt = bps_provenance_receipt(response)
+    if receipt is None:
+        return [("BPS 기준", "BPS 기준정보 미제공")]
+
+    def _enum_label(field: str, labels: Mapping[str, str]) -> str:
+        value = str(receipt.get(field) or "").strip()
+        return labels.get(value, "미제공")
+
+    def _value(field: str) -> str:
+        value = str(receipt.get(field) or "").strip()
+        return value or "미제공"
+
+    return [
+        ("BPS 적용 기준", _enum_label("status", _BPS_STATUS_LABELS)),
+        ("재무정보 기준일", _value("fs_selected_date")),
+        ("재무제표", _enum_label("fs_type", _BPS_FS_TYPE_LABELS)),
+        (
+            "재무정보 대상",
+            _enum_label("financial_entity", _BPS_FINANCIAL_ENTITY_LABELS),
+        ),
+        (
+            "평가 사용 출처",
+            _enum_label("scoring_source", _BPS_SCORING_SOURCE_LABELS),
+        ),
+        ("출처 상세", _value("source_note")),
+    ]
 
 
 def missing_fields(values: dict[str, Any]) -> list[str]:

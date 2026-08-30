@@ -247,6 +247,74 @@ def test_completed_output_uses_hybrid_follow_and_latest_answer_control() -> None
     assert "forceFollow ? () => scrollBottom('auto') : followIfAllowed" in source
 
 
+def _provenance_result(receipt: dict | None = None) -> dict:
+    result = {
+        "request_id": "req-provenance-test",
+        "company": "기초자산회사",
+        "issuer_company": "발행회사",
+        "underlying_company": "기초자산회사",
+        "stock_code": "005930",
+        "price_basis_date": "2026-08-29",
+        "selected_price_basis": "1D",
+        "m_grade": "M3",
+        "m_score": 50.0,
+        "final_rank": 100,
+        "final_score": 0.5,
+        "price_basis": {},
+    }
+    if receipt is not None:
+        result["bps_provenance"] = receipt
+    return result
+
+
+def _show_result(at, result: dict):
+    at.session_state["chat_messages"] = [
+        {
+            "role": "assistant",
+            "kind": "result",
+            "result": result,
+            "elapsed_ms": 1250.0,
+        }
+    ]
+    at.session_state["chat_stage"] = "complete"
+    return at.run(timeout=10)
+
+
+def test_result_ui_displays_api_bps_provenance_without_recalculation(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    _show_result(
+        at,
+        _provenance_result(
+            {
+                "status": "CANONICAL_CFS",
+                "fs_selected_date": "2026-06-30",
+                "fs_type": "CFS",
+                "financial_entity": "underlying_issuer",
+                "scoring_source": "DART_KRX",
+                "source_note": "API receipt 그대로",
+            }
+        ),
+    )
+
+    assert not at.exception
+    assert any(expander.label == "상세 출처 보기" for expander in at.expander)
+    public_text = " ".join(str(item.value) for item in at.markdown)
+    assert "연결재무제표 기준 (비지배지분 차감)" in public_text
+    assert "기초자산 발행사" in public_text
+    assert "DART 재무정보 · KRX 상장주식수" in public_text
+    assert "API receipt 그대로" in public_text
+
+
+def test_result_ui_handles_legacy_response_without_bps_receipt(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    _show_result(at, _provenance_result())
+
+    assert not at.exception
+    public_text = " ".join(str(item.value) for item in at.markdown)
+    assert "BPS 기준정보 미제공" in public_text
+    assert "DART 재무정보" not in public_text
+
+
 def test_prompt_submit_forces_follow_after_completed_output_is_rendered() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
 
