@@ -27,12 +27,32 @@
         const home = document.getElementById("agent-home");
         const frameWrap = document.getElementById("mcore-frame-wrap");
         const frame = document.getElementById("mcore-frame");
+        const frameLoading = document.getElementById("mcore-frame-loading");
         const returnButton = document.getElementById("agent-home-return");
         const routeButtons = document.querySelectorAll("[data-mcore-route]");
 
-        if (!home || !frameWrap || !frame || !returnButton) {
+        if (!home || !frameWrap || !frame || !frameLoading || !returnButton) {
             return;
         }
+
+        let readySource = "";
+        let loadingSettleTimer = null;
+
+        const setFrameLoading = (isLoading) => {
+            frameLoading.hidden = !isLoading;
+            frameWrap.setAttribute("aria-busy", String(isLoading));
+        };
+
+        frame.addEventListener("load", () => {
+            window.clearTimeout(loadingSettleTimer);
+            const loadedSource = frame.src;
+            readySource = loadedSource;
+            loadingSettleTimer = window.setTimeout(() => {
+                if (frame.src === loadedSource) {
+                    setFrameLoading(false);
+                }
+            }, 180);
+        });
 
         const buildMcoreUrl = (route) => {
             const baseSource = frame.dataset.baseSrc || frame.src;
@@ -45,6 +65,7 @@
             home.hidden = false;
             frameWrap.hidden = true;
             frameWrap.setAttribute("aria-hidden", "true");
+            setFrameLoading(false);
             returnButton.hidden = true;
             document.body.classList.add("agent-home-active");
             document.body.classList.remove("mcore-active");
@@ -63,7 +84,11 @@
             const targetSource = buildMcoreUrl(safeRoute);
 
             if (frame.src !== targetSource) {
+                readySource = "";
+                setFrameLoading(true);
                 frame.src = targetSource;
+            } else {
+                setFrameLoading(readySource !== targetSource);
             }
 
             home.hidden = true;
@@ -110,9 +135,5 @@
         initializeAgentHome();
     };
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initialize, { once: true });
-    } else {
-        initialize();
-    }
+    initialize();
 })();

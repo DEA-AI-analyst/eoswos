@@ -23,10 +23,10 @@
 
     <meta name="naver-site-verification" content="ccad66f9c69093825b52c06ba44f369b1f2e4f2b" />
 
-    <link rel="stylesheet" href="./agent_home.css?v=20260828-agent-home-polish" />
+    <link rel="stylesheet" href="./agent_home.css?v=20260830-transition" />
     <link rel="stylesheet" href="./ai_widget.css?v=20260828-agent-home-polish" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./agent_home.js?v=20260828-agent-home" defer></script>
+    <script src="./agent_home.js?v=20260830-transition" defer></script>
     <script src="./ai_widget.js?v=20260828-ai-agent-label" defer></script>
 
     <style>
@@ -215,10 +215,19 @@
     </button>
 
     <div class="app-frame-wrap" id="mcore-frame-wrap" hidden aria-hidden="true">
+        <div
+            class="mcore-frame-loading"
+            id="mcore-frame-loading"
+            role="status"
+            aria-live="polite"
+            hidden>
+            <span class="mcore-frame-loading__spinner" aria-hidden="true"></span>
+            <span>M-CORE 화면을 여는 중입니다.</span>
+        </div>
         <iframe
             id="mcore-frame"
-            data-base-src="https://eoswos.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"
-            src="https://eoswos.streamlit.app/?embed=true&embed_options=hide_loading_screen"
+            data-base-src="https://eoswos.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen&amp;view=overview"
+            src="https://eoswos.streamlit.app/?embed=true&embed_options=hide_loading_screen&view=overview"
             title="M-CORE 평가 시스템"
             allowfullscreen
             loading="eager">

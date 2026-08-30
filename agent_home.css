@@ -21,8 +21,44 @@
 
 .agent-home[hidden],
 .app-frame-wrap[hidden],
-.agent-home-return[hidden] {
+.agent-home-return[hidden],
+.mcore-frame-loading[hidden] {
     display: none !important;
+}
+
+.mcore-frame-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--agent-navy);
+    background: rgba(248, 250, 253, 0.98);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.mcore-frame-loading__spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid #d7e4f5;
+    border-top-color: var(--agent-blue);
+    border-radius: 50%;
+    animation: mcore-frame-spin 0.75s linear infinite;
+}
+
+@keyframes mcore-frame-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mcore-frame-loading__spinner {
+        animation: none;
+    }
 }
 
 .agent-home {
