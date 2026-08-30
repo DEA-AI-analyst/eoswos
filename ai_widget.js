@@ -29,7 +29,7 @@
         '<div id="ai-panel-loading" class="ai-panel-loading">AI 평가 화면을 불러오는 중입니다.</div>',
         '<iframe id="ai-evaluation-frame"',
         ' title="EOSWOS AI 메자닌 단건평가"',
-        ' data-src="https://ai-contest-win.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"',
+        ' data-src="https://eoswos-agent-bps-stg.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"',
         ' loading="lazy"',
         ' scrolling="no"',
         ' referrerpolicy="strict-origin-when-cross-origin"></iframe>'
