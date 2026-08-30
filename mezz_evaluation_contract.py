@@ -10,6 +10,8 @@ from typing import Any, Literal, TypedDict, cast
 
 SELF_STOCK_PRODUCT = "CB/BW/EB(자기주식)"
 THIRD_PARTY_PRODUCT = "EB(타사주식)"
+CONTRACT_TTM_MIN_YEARS = 0.25
+CONTRACT_TTM_MAX_YEARS = 30.0
 PRODUCT_TYPES = (SELF_STOCK_PRODUCT, THIRD_PARTY_PRODUCT)
 
 CREDIT_RATINGS = (
@@ -62,7 +64,7 @@ FIELD_LABELS = {
     "credit_rating": "신용등급",
     "conversion_price": "전환/행사/교환가액",
     "call_rate": "Call rate",
-    "ttm_years": "잔존만기",
+    "ttm_years": "최초 계약 TTM",
     "issue_date": "발행일",
 }
 
@@ -179,8 +181,15 @@ def validate_draft(values: dict[str, Any], today: date | None = None) -> list[st
         errors.append("전환/행사/교환가액은 0보다 커야 합니다.")
     if not _in_numeric_range(values.get("call_rate"), lower=0, upper=1):
         errors.append("Call rate는 0~1 범위여야 합니다.")
-    if not _in_numeric_range(values.get("ttm_years"), lower=0, upper=5):
-        errors.append("잔존만기는 0~5년 범위여야 합니다.")
+    if not _in_numeric_range(
+        values.get("ttm_years"),
+        lower=CONTRACT_TTM_MIN_YEARS,
+        upper=CONTRACT_TTM_MAX_YEARS,
+    ):
+        errors.append(
+            f"최초 계약 TTM은 {CONTRACT_TTM_MIN_YEARS:g}~"
+            f"{CONTRACT_TTM_MAX_YEARS:g}년 범위여야 합니다."
+        )
 
     try:
         issue_date = date.fromisoformat(str(values.get("issue_date") or ""))

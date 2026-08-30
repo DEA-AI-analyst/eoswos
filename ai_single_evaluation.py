@@ -70,6 +70,8 @@ from mezz_api_client import (
     MezzApiError,
 )
 from mezz_evaluation_contract import (
+    CONTRACT_TTM_MAX_YEARS,
+    CONTRACT_TTM_MIN_YEARS,
     CREDIT_RATINGS,
     FIELD_LABELS,
     SELF_STOCK_PRODUCT,
@@ -942,7 +944,7 @@ def _direct_submission_message(draft: dict[str, Any]) -> str:
         f"신용등급 `{draft.get('credit_rating') or '-'}`  \n"
         f"전환/행사/교환가액 `{draft.get('conversion_price') or '-'}` · "
         f"Call rate `{draft.get('call_rate')}` · "
-        f"잔존만기 `{draft.get('ttm_years')}년` · "
+        f"최초 계약 TTM `{draft.get('ttm_years')}년` · "
         f"발행일 `{draft.get('issue_date') or '-'}`"
     )
 
@@ -1042,15 +1044,16 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
             )
         with maturity_col:
             ttm_years = st.number_input(
-                "잔존만기(년)",
-                min_value=0.0,
-                max_value=5.0,
+                "최초 계약 TTM(년)",
+                min_value=CONTRACT_TTM_MIN_YEARS,
+                max_value=CONTRACT_TTM_MAX_YEARS,
                 value=None,
                 step=0.25,
                 format="%.2f",
-                placeholder="잔존만기 입력",
-                key="direct_ttm_years",
+                placeholder="계약상 만기년수 입력",
+                key="direct_contract_ttm_years_v2",
             )
+            st.caption("모델 계산에는 최대 5.00년 cap이 자동 적용됩니다.")
 
         issue_date = st.date_input(
             "발행일",
