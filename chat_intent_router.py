@@ -7,6 +7,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from enum import Enum
+from ai_evaluation_report import is_ai_report_request
+
 
 
 class ChatRoute(str, Enum):
@@ -14,6 +16,7 @@ class ChatRoute(str, Enum):
     TYPE_B_EVALUATION = "TYPE_B_EVALUATION"
     TYPE_C_EVALUATION_EXPLANATION = "TYPE_C_EVALUATION_EXPLANATION"
     TYPE_D_BLOCKED = "TYPE_D_BLOCKED"
+    TYPE_E_AI_REPORT = "TYPE_E_AI_REPORT"
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,7 @@ class RouteDecision:
         return self.route in {
             ChatRoute.TYPE_A_GENERAL,
             ChatRoute.TYPE_C_EVALUATION_EXPLANATION,
+            ChatRoute.TYPE_E_AI_REPORT,
         }
 
 
@@ -168,6 +172,9 @@ def route_chat_message(
 
     if any(term in lowered for term in _BLOCKED_TERMS):
         return RouteDecision(ChatRoute.TYPE_D_BLOCKED)
+    if has_current_evaluation and is_ai_report_request(normalized):
+        return RouteDecision(ChatRoute.TYPE_E_AI_REPORT)
+
 
     if has_current_evaluation and any(
         term in lowered for term in _RESULT_EXPLANATION_TERMS
@@ -195,6 +202,7 @@ def should_resolve_route_with_ai(
     if deterministic_decision.route in {
         ChatRoute.TYPE_C_EVALUATION_EXPLANATION,
         ChatRoute.TYPE_D_BLOCKED,
+        ChatRoute.TYPE_E_AI_REPORT,
     }:
         return False
 

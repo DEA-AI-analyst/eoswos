@@ -100,7 +100,7 @@ def test_fingerprint_detects_state_changes() -> None:
 
 def test_response_mode_classifier_only_targets_reports_and_opinions() -> None:
     assert classify_evaluation_response_mode("심사보고서 작성해줘") == "report"
-    assert classify_evaluation_response_mode("검토 의견을 작성해줘") == "opinion"
+    assert classify_evaluation_response_mode("검토 의견을 작성해줘") == "report"
     assert classify_evaluation_response_mode("M3인 이유를 알려줘") == "explanation"
 
 

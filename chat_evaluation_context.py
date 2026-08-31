@@ -43,8 +43,17 @@ _ML_FEATURE_FIELDS = (
     ("Exercise_Period_Years_Cap365", "사용", "사용"),
 )
 
-_REPORT_TERMS = ("검토보고서", "평가보고서", "심사보고서", "보고서")
-_OPINION_TERMS = ("검토의견", "평가의견", "심사의견")
+_REPORT_TERMS = (
+    "ai평가보고서",
+    "검토보고서",
+    "평가보고서",
+    "심사보고서",
+    "검토의견",
+    "평가의견",
+    "심사의견",
+    "심사의견서",
+    "보고서",
+)
 
 
 def classify_evaluation_response_mode(prompt: str) -> str:
@@ -53,8 +62,6 @@ def classify_evaluation_response_mode(prompt: str) -> str:
     normalized = "".join(str(prompt or "").lower().split())
     if any(term in normalized for term in _REPORT_TERMS):
         return "report"
-    if any(term in normalized for term in _OPINION_TERMS):
-        return "opinion"
     return "explanation"
 
 
@@ -163,16 +170,6 @@ def build_read_only_evaluation_context(
                 "ML 입력 Feature 표에는 제공된 값만 그대로 표시한다.",
                 "누락된 값은 추정하지 않고 미제공으로 표시한다.",
                 "동일한 설명을 여러 섹션에서 반복하지 않는다.",
-                "모든 문장은 존댓말로 작성한다.",
-            ],
-        }
-    elif response_mode == "opinion":
-        context["response_contract"] = {
-            "mode": "opinion",
-            "section_order": ["확정결과 요약", "핵심 검토요인", "검토의견"],
-            "rules": [
-                "제공된 확정값만 사용한다.",
-                "수치나 등급을 재계산하지 않는다.",
                 "모든 문장은 존댓말로 작성한다.",
             ],
         }

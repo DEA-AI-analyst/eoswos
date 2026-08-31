@@ -14,6 +14,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from ai_evaluation_report_ui import (
+    clear_report_session,
+    ensure_report_session,
+    generate_ai_report,
+    render_ai_report_workflow,
+)
 
 import agent_home_prompt_bridge as prompt_bridge
 import chat_intent_router as chat_router
@@ -538,6 +544,7 @@ def _ensure_session() -> None:
         st.session_state["panel_mode"] = None
     if "current_evaluation" not in st.session_state:
         st.session_state["current_evaluation"] = None
+    ensure_report_session()
     if "_agent_home_first_prompt_request_id" not in st.session_state:
         st.session_state["_agent_home_first_prompt_request_id"] = None
     if "_agent_home_first_prompt_ack_request_id" not in st.session_state:
@@ -553,6 +560,7 @@ def _reset_conversation() -> None:
     st.session_state["evaluation_draft"] = {}
     st.session_state["chat_stage"] = "collecting"
     st.session_state["panel_mode"] = None
+    clear_report_session()
     st.session_state["current_evaluation"] = None
     st.session_state.pop("_chat_force_follow_after_submit", None)
 
@@ -805,6 +813,9 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
             result=api_result.data,
             elapsed_ms=api_result.elapsed_ms,
         )
+        st.session_state["current_evaluation_input"] = copy.deepcopy(payload)
+        st.session_state["ai_report_state"] = None
+        st.session_state["ai_report_error"] = None
         st.session_state["current_evaluation"] = copy.deepcopy(api_result.data)
         st.session_state["chat_stage"] = "complete"
         st.session_state["panel_mode"] = None
@@ -980,6 +991,13 @@ def _handle_chat_prompt(prompt: str) -> ChatRoute:
         if st.session_state.get("chat_stage") == "complete":
             st.session_state["chat_stage"] = "collecting"
         _append_message("assistant", EVALUATION_FORM_RESPONSE)
+    elif decision.route == ChatRoute.TYPE_E_AI_REPORT:
+        st.session_state["panel_mode"] = None
+        generate_ai_report(
+            api_key=_setting("CHATBASE_API_KEY"),
+            agent_id=_setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID"),
+            model_mode=st.session_state.get("_api_model_mode"),
+        )
     else:
         st.session_state["panel_mode"] = None
         _run_chatbase_query(prompt, route=decision.route, history=history)
@@ -1207,6 +1225,7 @@ st.markdown(
 
 _ensure_session()
 today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()
+st.session_state["_api_model_mode"] = health.get("model_mode")
 
 try:
     bridge_value = prompt_bridge.render_agent_home_prompt_bridge(
@@ -1254,6 +1273,11 @@ if stage == "confirming":
     st.rerun()
 
 if stage == "complete":
+    render_ai_report_workflow(
+        api_key=_setting("CHATBASE_API_KEY"),
+        agent_id=_setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID"),
+        model_mode=health.get("model_mode"),
+    )
     if st.button("새 평가", icon=":material/add:", width="stretch"):
         _reset_conversation()
         st.rerun()

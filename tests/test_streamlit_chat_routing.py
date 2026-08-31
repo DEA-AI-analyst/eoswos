@@ -365,7 +365,7 @@ def test_completed_evaluation_shows_new_evaluation_and_chat_input(monkeypatch) -
 
     assert not at.exception
     labels = [button.label for button in at.button]
-    assert labels == ["새 평가"]
+    assert labels == ["AI 평가보고서", "새 평가"]
     assert len(at.chat_input) == 1
 
 
