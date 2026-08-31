@@ -474,7 +474,7 @@ def test_result_ui_displays_api_bps_provenance_without_recalculation(monkeypatch
     public_text = " ".join(str(item.value) for item in at.markdown)
     assert "연결재무제표 기준 (비지배지분 차감)" in public_text
     assert "기초자산 발행사" in public_text
-    assert "DART 재무정보 · KRX 상장주식수" in public_text
+    assert "DART 재무 + 검증된 KRX 상장주" in public_text
     assert "API receipt 그대로" in public_text
 
 
@@ -485,7 +485,7 @@ def test_result_ui_handles_legacy_response_without_bps_receipt(monkeypatch) -> N
     assert not at.exception
     public_text = " ".join(str(item.value) for item in at.markdown)
     assert "BPS 기준정보 미제공" in public_text
-    assert "DART 재무정보" not in public_text
+    assert "DART 재무" not in public_text
 
 
 def test_prompt_submit_forces_follow_after_completed_output_is_rendered() -> None:

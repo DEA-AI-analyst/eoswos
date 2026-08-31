@@ -82,7 +82,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "34",
         "1,261",
         "0.682",
-        "DART 재무정보 + 검증된 KRX 상장주식수",
+        "DART 재무 + 검증된 KRX 상장주",
         "2026-06-30 / CFS",
         "FROZEN_REFERENCE",
         KOREAN_SOURCE_NOTE,
@@ -116,7 +116,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     grid_widths = [int(column.get(qn("w:w"))) for column in provenance._tbl.tblGrid]
     assert grid_widths == [1500, 4400, 1400, 3580]
     assert sum(grid_widths) <= 10885
-    assert provenance.cell(0, 1).text == "DART 재무정보 + 검증된 KRX 상장주식수"
+    assert provenance.cell(0, 1).text == "DART 재무 + 검증된 KRX 상장주"
     assert provenance.cell(0, 3).text == "2026-06-30 / CFS"
     for row in provenance.rows[:3]:
         for cell in row.cells:

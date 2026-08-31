@@ -104,7 +104,7 @@ def test_canonical_context_copies_api_values_and_safe_provenance_only() -> None:
     assert context["common_info"]["contract_ttm_years"] == 30.0
     assert context["common_info"]["model_ttm_years"] == 5.0
     assert context["provenance"]["scoring_source"] == "DART_KRX"
-    assert "검증된 KRX 상장주식수" in context["provenance"]["scoring_source_label"]
+    assert context["provenance"]["scoring_source_label"] == "DART 재무 + 검증된 KRX 상장주"
     serialized = str(context)
     assert "naver_bps" not in serialized
     assert "must-not-leak" not in serialized

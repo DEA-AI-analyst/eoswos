@@ -120,7 +120,7 @@ def test_bps_provenance_display_translates_only_documented_enums() -> None:
         "재무정보 기준일": "2026-06-30",
         "재무제표": "연결재무제표(CFS)",
         "재무정보 대상": "기초자산 발행사",
-        "평가 사용 출처": "DART 재무정보 · KRX 상장주식수",
+        "평가 사용 출처": "DART 재무 + 검증된 KRX 상장주",
         "출처 상세": "지배기업 소유주지분 검증 완료",
     }
 

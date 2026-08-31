@@ -98,7 +98,7 @@ _BPS_FINANCIAL_ENTITY_LABELS = {
     "underlying_issuer": "기초자산 발행사",
 }
 _BPS_SCORING_SOURCE_LABELS = {
-    "DART_KRX": "DART 재무정보 · KRX 상장주식수",
+    "DART_KRX": "DART 재무 + 검증된 KRX 상장주",
 }
 
 
