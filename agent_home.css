@@ -494,6 +494,7 @@
     flex: 0 0 auto;
     margin-top: 0;
     color: #d4deeb;
+    font-weight: 700;
     line-height: 1.35;
     text-align: right;
     white-space: nowrap;
@@ -501,31 +502,68 @@
 
 .agent-home-return {
     position: fixed;
-    top: 12px;
-    left: 14px;
-    z-index: 10001;
+    right: 16px;
+    bottom: 124px;
+    z-index: 10018;
     display: inline-flex;
+    width: auto;
+    min-width: 112px;
+    height: 48px;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    min-height: 36px;
-    padding: 0 12px;
-    color: var(--agent-navy);
-    font: 700 13px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid #cbd7e6;
-    border-radius: 7px;
-    box-shadow: 0 4px 14px rgba(23, 49, 82, 0.14);
+    padding: 0 18px;
+    color: #ffffff;
+    font: 700 14px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
+    background: #274f83;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    box-shadow: 0 10px 26px rgba(18, 51, 96, 0.24);
     cursor: pointer;
+    transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.agent-home-return:hover {
+    background: #1f436f;
+    box-shadow: 0 13px 30px rgba(18, 51, 96, 0.3);
+    transform: translateY(-1px);
+}
+
+.agent-home-return:focus-visible {
+    outline: 3px solid rgba(53, 111, 202, 0.34);
+    outline-offset: 3px;
 }
 
 .agent-home-return svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+}
+
+.agent-home-return__label--compact {
+    display: none;
 }
 
 body.agent-home-active .site-copyright-registration,
 body.agent-home-active .site-hit-counter {
     display: none;
+}
+
+@media (max-width: 768px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+    .agent-home-return {
+        right: 12px;
+        bottom: 124px;
+        min-width: 72px;
+        height: 52px;
+        padding: 0 14px;
+    }
+
+    .agent-home-return__label--desktop {
+        display: none;
+    }
+
+    .agent-home-return__label--compact {
+        display: inline;
+    }
 }
 
 @media (max-width: 840px) {
@@ -667,15 +705,6 @@ body.agent-home-active .site-hit-counter {
         text-align: right;
     }
 
-    .agent-home-return span {
-        display: none;
-    }
-
-    .agent-home-return {
-        width: 38px;
-        justify-content: center;
-        padding: 0;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
