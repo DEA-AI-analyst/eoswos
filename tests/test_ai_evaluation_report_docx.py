@@ -104,6 +104,26 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     assert abs(key_results.cell(1, 0).paragraphs[0].runs[0].font.size.pt - 15.0) < 0.01
     for index in (1, 2, 3):
         assert abs(key_results.cell(1, index).paragraphs[0].runs[0].font.size.pt - 10.0) < 0.01
+    for index in range(4):
+        margins = key_results.cell(1, index)._tc.get_or_add_tcPr().find(qn("w:tcMar"))
+        assert margins is not None
+        assert margins.find(qn("w:top")).get(qn("w:w")) == "45"
+        assert margins.find(qn("w:bottom")).get(qn("w:w")) == "45"
+
+    provenance = next(
+        table for table in document.tables if table.cell(0, 0).text == "평가 데이터"
+    )
+    grid_widths = [int(column.get(qn("w:w"))) for column in provenance._tbl.tblGrid]
+    assert grid_widths == [1500, 4400, 1400, 3580]
+    assert sum(grid_widths) <= 10885
+    assert provenance.cell(0, 1).text == "DART 재무정보 + 검증된 KRX 상장주식수"
+    assert provenance.cell(0, 3).text == "2026-06-30 / CFS"
+    for row in provenance.rows[:3]:
+        for cell in row.cells:
+            margins = cell._tc.get_or_add_tcPr().find(qn("w:tcMar"))
+            assert margins is not None
+            assert margins.find(qn("w:start")).get(qn("w:w")) == "55"
+            assert margins.find(qn("w:end")).get(qn("w:w")) == "55"
 
     axes = next(
         table

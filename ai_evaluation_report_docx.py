@@ -240,7 +240,7 @@ def _add_key_results(document: Document, context: Mapping[str, Any]) -> None:
             size=value_size,
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
-        _set_cell_margins(table.cell(1, index), top=80, bottom=80, start=85, end=85)
+        _set_cell_margins(table.cell(1, index), top=45, bottom=45, start=85, end=85)
         _shade(table.cell(1, index), PALE_BLUE if index == 0 else WHITE)
 
 def _add_axes(document: Document, context: Mapping[str, Any]) -> None:
@@ -340,7 +340,9 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
 def _add_provenance(document: Document, context: Mapping[str, Any]) -> None:
     _section_heading(document, "5. 데이터 및 평가근거")
     provenance = _mapping(context.get("provenance"))
-    widths = (1850, 3660, 1550, 4020)
+    # Keep the complete table within the A4 text area while giving the two
+    # provenance values enough room to stay on one line in Word.
+    widths = (1500, 4400, 1400, 3580)
     rows = [
         (
             "평가 데이터",
@@ -365,10 +367,15 @@ def _add_provenance(document: Document, context: Mapping[str, Any]) -> None:
         ),
     ]
     table = _label_value_table(document, rows, widths=widths)
+    for row in table.rows:
+        for cell in row.cells:
+            _set_cell_margins(cell, top=45, bottom=45, start=55, end=55)
     source_note = provenance.get("source_note")
     if source_note:
         cells = table.add_row().cells
         _apply_row_widths(cells, widths)
+        for cell in cells:
+            _set_cell_margins(cell, top=45, bottom=45, start=55, end=55)
         _cell_text(cells[0], "자료 기준", bold=True, color=NAVY, size=BODY_FONT_SIZE)
         _shade(cells[0], PALE_GRAY)
         merged = cells[1].merge(cells[3])
