@@ -158,7 +158,7 @@
     display: block;
     margin-bottom: 13px;
     color: var(--agent-blue);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
     text-transform: none;
 }
@@ -733,7 +733,7 @@ body.agent-home-active .site-hit-counter {
 
     .agent-home__eyebrow {
         margin-bottom: 10px;
-        font-size: 10px;
+        font-size: 11px;
     }
 
     .agent-home__intro h1 {

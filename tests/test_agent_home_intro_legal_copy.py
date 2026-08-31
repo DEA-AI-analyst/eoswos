@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_agent_home_intro_uses_requested_framework_and_legal_copy() -> None:
     html = (ROOT / "index.html").read_text(encoding="utf-8")
 
-    assert "AI-powered Mezzanine Screening, Evaluation &amp; Monitoring Platform" in html
+    assert "AI-powered Mezzanine Investment Decision Support Platform" in html
     assert "AI-POWERED MEZZANINE DECISION SUPPORT" not in html
     assert "AI Decision Support Framework" in html
     assert "AI Decision Platform" not in html

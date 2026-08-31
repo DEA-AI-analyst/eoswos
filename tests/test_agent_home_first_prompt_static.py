@@ -15,7 +15,7 @@ def test_home_exposes_one_plain_text_prompt_without_get_field_name() -> None:
     input_markup = HTML.split('id="agent-home-first-prompt-input"', 1)[1].split("/>", 1)[0]
     assert "name=" not in input_markup
     assert 'autocomplete="off"' in input_markup
-    assert "AI Agent 사용하기" in HTML
+    assert "🏠 Agent Home" in HTML
     assert "메자닌 평가와 분석 방법을 질문해 주세요." not in HTML
     assert "대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." in HTML
     assert "agent-home-first-prompt-help" not in HTML
@@ -84,3 +84,24 @@ def test_widget_accepts_only_bounded_descendants_of_agent_frame() -> None:
     assert "current === frame.contentWindow" in WIDGET_JS
     assert "depth < 5" in WIDGET_JS
     assert "parent === current" in WIDGET_JS
+
+
+def test_agent_home_uses_investment_decision_copy() -> None:
+    expected = (
+        "AI-powered Mezzanine Investment Decision Support Platform",
+        "메자닌 투자 검토의 시작부터 사후관리까지",
+        "🏠 Agent Home",
+        "주요 업무: 투자 검토 • 심사 • 사후관리 전 과정의 AI 의사결정 지원",
+        "투자 전 평가",
+        "신규 메자닌의 상품성과 상대적 검토 우선순위를 분석합니다.",
+        "투자 후 모니터링",
+        "최신 시장 • 재무정보를 반영하여 기존 투자건을 재평가합니다.",
+    )
+    for copy in expected:
+        assert copy in HTML
+
+    css = (ROOT / "agent_home.css").read_text(encoding="utf-8")
+    eyebrow = css.split(".agent-home__eyebrow {", 1)[1].split("}", 1)[0]
+    assert "font-size: 13px;" in eyebrow
+    mobile_eyebrow = css.rsplit(".agent-home__eyebrow {", 1)[1].split("}", 1)[0]
+    assert "font-size: 11px;" in mobile_eyebrow
