@@ -87,7 +87,6 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "FROZEN_REFERENCE",
         KOREAN_SOURCE_NOTE,
         "담당자 최종 검토의견입니다.",
-        "개별 성공확률이나 투자승인·부결을 의미하지 않습니다",
         "E2 | Score 0.880 | Rank 400",
         "1D·1W·1M 가격기준에서 M Grade가 M4로 동일하게 유지됩니다.",
     ):
@@ -144,6 +143,10 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         == ["가격기준", "M Grade", "e_M", "p_M", "s_M"]
     )
     assert _all_cells_centered(price)
+    price_grid_widths = [int(column.get(qn("w:w"))) for column in price._tbl.tblGrid]
+    assert price_grid_widths == [1100, 1500, 2761, 2761, 2761]
+    assert sum(price_grid_widths) <= 10885
+    assert len(set(price_grid_widths[2:])) == 1
 
     review = document.tables[-1]
     assert len(review.rows) == 1 and len(review.columns) == 1
@@ -165,6 +168,8 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
             for run in paragraph.runs:
                 if run.text:
                     assert abs(run.font.size.pt - 8.0) < 0.01
+    assert "본 보고서는 AI 기반 의사결정 지원자료이며 최종 투자판단은 별도의 검토를 통해 이루어집니다." in text
+    assert "M Grade는 상대적 검토 우선순위를 나타내며" not in text
     assert "999999" not in text
 
 

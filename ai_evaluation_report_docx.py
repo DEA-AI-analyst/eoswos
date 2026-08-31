@@ -26,8 +26,7 @@ FONT = "Malgun Gothic"
 BODY_FONT_SIZE = 10.0
 FOOTER_FONT_SIZE = 8.0
 REPORT_DISCLAIMER = (
-    "M Grade는 상대적 검토 우선순위를 나타내며 개별 성공확률이나 투자승인·부결을 의미하지 "
-    "않습니다. 본 보고서는 AI 기반 의사결정 지원자료이며 최종 투자판단은 별도의 검토를 통해 이루어집니다."
+    "본 보고서는 AI 기반 의사결정 지원자료이며 최종 투자판단은 별도의 검토를 통해 이루어집니다."
 )
 MONITORING_DISCLAIMER = (
     "Monitoring M Grade는 Frozen Model을 Rebased 방식으로 적용한 사후관리 평가결과이며, "
@@ -296,7 +295,7 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
     legend.paragraph_format.space_before = Pt(0)
     legend.paragraph_format.space_after = Pt(0.8)
     _run(legend, "축 열 표기: Grade | Score | Rank", size=BODY_FONT_SIZE, color=MID_GRAY)
-    widths = (1200, 1700, 2726, 2726, 2728)
+    widths = (1100, 1500, 2761, 2761, 2761)
     table = document.add_table(rows=1, cols=5)
     _configure_table(table, widths)
     for index, label in enumerate(("가격기준", "M Grade", "e_M", "p_M", "s_M")):
