@@ -17,6 +17,7 @@ from ai_evaluation_report import (
     build_canonical_report_context,
     new_report_state,
     report_source_fingerprint,
+    validate_generated_grounding,
     validate_generated_quantitative_parity,
 )
 from ai_evaluation_report_docx import (
@@ -88,6 +89,12 @@ def generate_ai_report(*, api_key: str, agent_id: str, model_mode: str | None) -
             raise ChatbaseError(
                 "AI 평가의견의 확정값 일치 여부를 확인하지 못했습니다.",
                 code="REPORT_PARITY_ERROR",
+            )
+        grounding_errors = validate_generated_grounding(response.text, canonical)
+        if grounding_errors:
+            raise ChatbaseError(
+                "AI 평가의견의 도달시점 근거를 확인하지 못했습니다.",
+                code="REPORT_GROUNDING_ERROR",
             )
         fingerprint = report_source_fingerprint(current, submitted)
         state = new_report_state(

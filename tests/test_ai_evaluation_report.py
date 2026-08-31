@@ -10,6 +10,7 @@ from ai_evaluation_report import (
     is_ai_report_request,
     new_report_state,
     report_source_fingerprint,
+    validate_generated_grounding,
     validate_generated_quantitative_parity,
 )
 
@@ -161,6 +162,13 @@ def test_generation_context_limits_ai_to_narrative() -> None:
     assert "확정 정량값 또는 등급의 본문 반복" in context["response_contract"]["forbidden"]
     assert "M Score" in AI_REPORT_GENERATION_REQUEST
     assert "직접 반복하지 말고" in AI_REPORT_GENERATION_REQUEST
+    assert canonical["ai_grounding"]["verified_event_timing"] is False
+    assert "분류에서 생성된 보조 라벨" in canonical["ai_grounding"]["timing_point_semantics"]
+    assert (
+        "timing_point 보조 라벨을 행사개시일·실제 First_ITM 날짜·경과기간으로 해석"
+        in context["response_contract"]["forbidden"]
+    )
+    assert "실제 First_ITM" in AI_REPORT_GENERATION_REQUEST
 
 
 def test_report_context_uses_standard_same_entity_label() -> None:
@@ -185,6 +193,18 @@ def test_quantitative_parity_accepts_confirmed_values_and_rejects_drift() -> Non
         "Final Score",
     ]
 
+
+def test_timing_grounding_allows_auxiliary_label_and_rejects_event_claims() -> None:
+    canonical = build_canonical_report_context(_result(), submitted_input=_submitted())
+
+    assert validate_generated_grounding("도달지점 보조 라벨은 당일입니다.", canonical) == []
+    for invalid in (
+        "행사개시일 당일 도달 특성이 나타납니다.",
+        "First_ITM 날짜는 당일입니다.",
+        "실제 도달 날짜는 평가일입니다.",
+        "도달까지 1일이 소요되었습니다.",
+    ):
+        assert validate_generated_grounding(invalid, canonical) == ["도달시점 grounding"]
 
 def test_report_state_preserves_draft_and_source_fingerprint() -> None:
     result = _result()

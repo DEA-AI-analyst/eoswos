@@ -1,10 +1,25 @@
 from io import BytesIO
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 
 from ai_evaluation_report import build_canonical_report_context
-from ai_evaluation_report_docx import build_report_docx, report_filename
+from ai_evaluation_report_docx import (
+    _price_consistency_sentence,
+    _source_note_display,
+    build_report_docx,
+    report_filename,
+)
 from test_ai_evaluation_report import _result, _submitted
+
+
+KNOWN_SOURCE_NOTE = (
+    "DART CFS assets, liabilities, and non-controlling interests with KRX listed shares."
+)
+KOREAN_SOURCE_NOTE = (
+    "DART 연결재무제표의 자산·부채·비지배지분과 KRX 상장주식수를 기준으로 산정"
+)
 
 
 def _document_text(document: Document) -> str:
@@ -27,15 +42,30 @@ def _body_runs(document: Document):
                     yield from paragraph.runs
 
 
+def _all_cells_centered(table) -> bool:
+    return all(
+        paragraph.alignment == WD_ALIGN_PARAGRAPH.CENTER
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+    )
+
+
 def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
+    result = _result()
+    result["bps_provenance"]["source_note"] = KNOWN_SOURCE_NOTE
     context = build_canonical_report_context(
-        _result(),
+        result,
         submitted_input=_submitted(),
         model_mode="FROZEN_REFERENCE",
     )
     output = build_report_docx(
         context,
-        ai_commentary="확정결과상 M Grade는 M4입니다. p_M과 s_M을 함께 확인해야 합니다. 추가 재무 및 시장정보를 검토해 주세요.",
+        ai_commentary=(
+            "확정 결과의 상대적 검토 우선순위를 확인했습니다.\n"
+            "p_M과 s_M의 질적 해석을 함께 확인해야 합니다.\n"
+            "추가 재무 및 시장정보를 검토해 주세요."
+        ),
         reviewer_comment="담당자 최종 검토의견입니다.",
     )
     assert output.startswith(b"PK")
@@ -53,12 +83,16 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "1,261",
         "0.682",
         "DART 재무정보 + 검증된 KRX 상장주식수",
-        "2026-06-30",
+        "2026-06-30 / CFS",
         "FROZEN_REFERENCE",
+        KOREAN_SOURCE_NOTE,
         "담당자 최종 검토의견입니다.",
         "개별 성공확률이나 투자승인·부결을 의미하지 않습니다",
+        "E2 | Score 0.880 | Rank 400",
+        "1D·1W·1M 가격기준에서 M Grade가 M4로 동일하게 유지됩니다.",
     ):
         assert expected in text
+
     key_results = next(
         table
         for table in document.tables
@@ -67,12 +101,45 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     )
     assert key_results.cell(1, 1).text == "34"
     assert key_results.cell(1, 3).text == "0.682"
+    assert abs(key_results.cell(1, 0).paragraphs[0].runs[0].font.size.pt - 15.0) < 0.01
+    for index in (1, 2, 3):
+        assert abs(key_results.cell(1, index).paragraphs[0].runs[0].font.size.pt - 10.0) < 0.01
+
+    axes = next(
+        table
+        for table in document.tables
+        if [cell.text for cell in table.rows[0].cells] == ["e_M", "p_M", "s_M"]
+    )
+    assert _all_cells_centered(axes)
+    assert [cell.text for cell in axes.rows[1].cells] == [
+        "구조적 효율성",
+        "ITM 도달가능성 + PK 강도",
+        "First_ITM Timing / 도달속도",
+    ]
+
+    price = next(
+        table
+        for table in document.tables
+        if [cell.text for cell in table.rows[0].cells]
+        == ["가격기준", "M Grade", "e_M", "p_M", "s_M"]
+    )
+    assert _all_cells_centered(price)
+
+    review = document.tables[-1]
+    assert len(review.rows) == 1 and len(review.columns) == 1
+    assert review.cell(0, 0).text == "담당자 최종 검토의견입니다."
+    borders = review.cell(0, 0)._tc.get_or_add_tcPr().find(qn("w:tcBorders"))
+    assert borders is not None
+
     assert "EOSWOS" not in text
+    assert "Scoring Source" not in text
+    assert "Financial Entity" not in text
+    assert "Source Note" not in text
+    assert KNOWN_SOURCE_NOTE not in text
     for run in _body_runs(document):
         if not run.text:
             continue
-        expected_size = 16.5 if run.text == "EosWos AI 평가보고서" else 10.0
-        assert abs(run.font.size.pt - expected_size) < 0.01
+        assert round(run.font.size.pt, 1) in {10.0, 15.0, 16.5}
     for section in document.sections:
         for paragraph in section.footer.paragraphs:
             for run in paragraph.runs:
@@ -80,6 +147,46 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
                     assert abs(run.font.size.pt - 8.0) < 0.01
     assert "999999" not in text
 
+
+def test_price_summary_is_deterministic_for_equal_and_mixed_grades() -> None:
+    assert _price_consistency_sentence((("1D", "M2"), ("1W", "M2"), ("1M", "M2"))) == (
+        "1D·1W·1M 가격기준에서 M Grade가 M2로 동일하게 유지됩니다."
+    )
+    assert _price_consistency_sentence((("1D", "M2"), ("1W", "M3"), ("1M", "M2"))) == (
+        "가격기준별 M Grade가 1D M2 · 1W M3 · 1M M2로 달라 기준별 결과 차이를 함께 검토해야 합니다."
+    )
+
+
+def test_source_note_translation_is_exact_and_unknown_text_is_preserved() -> None:
+    assert _source_note_display(KNOWN_SOURCE_NOTE) == KOREAN_SOURCE_NOTE
+    unknown = "Approved future source note"
+    assert _source_note_display(unknown) == unknown
+
+
+def test_max_length_layout_preserves_full_text_at_ten_points() -> None:
+    context = build_canonical_report_context(
+        _result(),
+        submitted_input=_submitted(),
+        model_mode="FROZEN_REFERENCE",
+    )
+    ai_text = ("확정 사실 범위에서만 해석합니다. " * 100)[:1400]
+    reviewer_text = ("담당자 검토의견을 기록합니다. " * 100)[:790]
+
+    output = build_report_docx(
+        context,
+        ai_commentary=ai_text,
+        reviewer_comment=reviewer_text,
+    )
+    document = Document(BytesIO(output))
+
+    assert ai_text in [paragraph.text for paragraph in document.paragraphs]
+    assert document.tables[-1].cell(0, 0).text == reviewer_text
+    ai_paragraph = next(paragraph for paragraph in document.paragraphs if paragraph.text == ai_text)
+    assert all(abs(run.font.size.pt - 10.0) < 0.01 for run in ai_paragraph.runs if run.text)
+    review_runs = document.tables[-1].cell(0, 0).paragraphs[0].runs
+    assert all(abs(run.font.size.pt - 10.0) < 0.01 for run in review_runs if run.text)
+    assert abs(document.sections[0].top_margin.mm - 5) < 0.1
+    assert abs(document.sections[0].bottom_margin.mm - 6) < 0.1
 
 def test_report_filename_is_safe_and_docx_only() -> None:
     context = build_canonical_report_context(_result(), submitted_input=_submitted())
@@ -102,8 +209,10 @@ def test_monitoring_uses_same_template_with_optional_fields() -> None:
     )
     context = build_canonical_report_context(result, model_mode="FROZEN_REFERENCE")
     output = build_report_docx(context, ai_commentary="사후관리 결과를 확인했습니다.", reviewer_comment="")
-    text = _document_text(Document(BytesIO(output)))
+    document = Document(BytesIO(output))
+    text = _document_text(document)
     assert "사후관리 재평가" in text
     assert "Actual 2024-07-05" in text
     assert "Rebased 3.01" in text
     assert "별도의 독립 Monitoring Model을 의미하지 않습니다" in text
+    assert document.tables[-1].cell(0, 0).text == "미작성"

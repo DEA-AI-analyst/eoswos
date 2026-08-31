@@ -39,7 +39,9 @@ AI_REPORT_GENERATION_REQUEST = (
     "수치·등급을 만들지 마세요. 확정 정량값과 등급은 고정 결과 영역에 이미 표시되므로 "
     "본문에서 M Grade, M Score, M Rank, Final Score 또는 다른 숫자를 직접 반복하지 말고 "
     "질적 해석만 작성하세요. M Grade를 성공확률, 투자추천, 승인 또는 부결로 표현하지 "
-    "말고 M5는 후순위 검토영역으로 표현하세요. ITM 도달을 투자수익 보장으로 표현하지 마세요."
+    "말고 M5는 후순위 검토영역으로 표현하세요. ITM 도달을 투자수익 보장으로 표현하지 마세요. "
+    "timing_point의 '당일'은 p_M/s_M 분류에서 생성된 보조 라벨이며 행사개시일, 실제 First_ITM "
+    "날짜 또는 경과기간으로 바꾸어 쓰지 마세요."
 )
 
 _MONITORING_ALIASES = {
@@ -182,6 +184,11 @@ def build_canonical_report_context(
             "ml_feature_snapshot": _safe_mapping(result.get("ml_feature_snapshot")),
             "reach_pk_strength": _scalar(result.get("reach_pk_strength")),
             "timing_point": _scalar(result.get("timing_point")),
+            "timing_point_semantics": (
+                "p_M/s_M 분류에서 생성된 보조 라벨이며 실제 행사개시일, "
+                "First_ITM 날짜 또는 경과기간이 아님"
+            ),
+            "verified_event_timing": False,
             "review_area": _scalar(result.get("review_area")),
         },
     }
@@ -198,7 +205,8 @@ def build_ai_report_generation_context(canonical_context: Mapping[str, Any]) -> 
             "확정된 M-CORE/API 산출값이다. 값을 재계산·변경·추정하지 말고 제공된 사실만 해석한다. "
             "M Grade는 상대적 검토 우선순위이며 성공확률·투자추천·승인·부결이 아니다. "
             "Final Score의 직접 구성축은 p_M과 s_M이고 e_M은 구조적 효율성 축이다. "
-            "M5는 후순위 검토영역이며 ITM 도달은 투자수익 보장을 뜻하지 않는다."
+            "M5는 후순위 검토영역이며 ITM 도달은 투자수익 보장을 뜻하지 않는다. "
+            "timing_point는 p_M/s_M 분류의 보조 라벨이며 실제 행사개시일·First_ITM 날짜·경과기간이 아니다."
         ),
         "facts": copy.deepcopy(dict(canonical_context)),
         "response_contract": {
@@ -213,6 +221,7 @@ def build_ai_report_generation_context(canonical_context: Mapping[str, Any]) -> 
                 "투자추천",
                 "승인 또는 부결 판단",
                 "제공되지 않은 provenance 추정",
+                "timing_point 보조 라벨을 행사개시일·실제 First_ITM 날짜·경과기간으로 해석",
             ],
         },
     }
@@ -274,6 +283,29 @@ def validate_generated_quantitative_parity(
         errors=errors,
     )
     return list(dict.fromkeys(errors))
+
+
+def validate_generated_grounding(
+    commentary: str,
+    canonical_context: Mapping[str, Any],
+) -> list[str]:
+    """Reject event-timing claims that the canonical report facts do not establish."""
+
+    text = str(commentary or "").strip()
+    grounding = canonical_context.get("ai_grounding")
+    grounding = grounding if isinstance(grounding, Mapping) else {}
+    if bool(grounding.get("verified_event_timing")):
+        return []
+
+    prohibited_patterns = (
+        r"행사\s*개시일",
+        r"First[_\s-]*ITM\s*(?:date|날짜|일자)",
+        r"실제\s*(?:도달일|도달\s*날짜)",
+        r"도달\s*(?:까지|소요)[^.\n]*?\d+\s*일",
+    )
+    if any(re.search(pattern, text, re.IGNORECASE) for pattern in prohibited_patterns):
+        return ["도달시점 grounding"]
+    return []
 
 
 def new_report_state(

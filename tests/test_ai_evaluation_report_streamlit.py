@@ -205,6 +205,27 @@ def test_quantitative_drift_fails_report_only_and_preserves_result(monkeypatch) 
     assert any("AI 평가보고서 생성에 실패했습니다" in item.value for item in at.error)
 
 
+def test_ungrounded_timing_claim_fails_report_only_and_preserves_result(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    confirmed = _confirmed_result()
+    _show_confirmed(at, confirmed)
+
+    monkeypatch.setattr(
+        "chatbase_client.ChatbaseClient.ask",
+        lambda *_args, **_kwargs: ChatbaseCallResult(
+            text="행사개시일 당일 도달 특성이 나타납니다.",
+            elapsed_ms=1.0,
+        ),
+    )
+    next(button for button in at.button if button.label == "AI 평가보고서").click().run(timeout=10)
+
+    assert not at.exception
+    assert at.session_state["ai_report_state"] is None
+    assert at.session_state["current_evaluation"] == confirmed
+    public = " ".join(str(item.value) for item in at.error)
+    assert "AI 평가보고서 생성에 실패했습니다" in public
+    assert "행사개시일" not in public
+
 def test_chatbase_failure_does_not_turn_evaluation_into_failure(monkeypatch) -> None:
     at, _ = _app(monkeypatch)
     confirmed = _confirmed_result()
