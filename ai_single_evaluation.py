@@ -317,7 +317,7 @@ st.markdown(
         }
 
         [data-testid="stElementContainer"]:has(.chat-panel-header) {
-            margin-bottom: 0;
+            margin-bottom: 0.55rem;
         }
         .chat-panel-header {
             padding-right: 5.4rem;
