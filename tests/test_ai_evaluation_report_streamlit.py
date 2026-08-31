@@ -3,6 +3,7 @@ import copy
 import pytest
 
 from chatbase_client import ChatbaseCallResult
+from ai_evaluation_report_ui import _display_number, _display_rank
 from test_streamlit_chat_routing import _app, _provenance_result, _show_result
 
 
@@ -48,6 +49,11 @@ def _show_confirmed(at, result: dict):
 
 
 
+
+def test_report_key_result_display_matches_evaluation_card_precision() -> None:
+    assert _display_number(74.05451, 3) == "74.055"
+    assert _display_number(1.478863, 6) == "1.478863"
+    assert _display_rank(1261) == "1,261"
 
 def test_report_button_generates_dedicated_editable_draft(monkeypatch) -> None:
     at, calls = _app(monkeypatch)

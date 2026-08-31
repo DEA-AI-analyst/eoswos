@@ -237,10 +237,14 @@ def _render_key_results(context: Mapping[str, Any]) -> None:
     result = _mapping(context.get("evaluation_result"))
     st.markdown("#### 2. 핵심 평가결과")
     columns = st.columns(4)
-    labels = ("M Grade", "M Score", "M Rank", "Final Score")
-    keys = ("m_grade", "m_score", "m_rank", "final_score")
-    for column, label, key in zip(columns, labels, keys):
-        column.metric(label, _display(result.get(key)))
+    metrics = (
+        ("M Grade", _display(result.get("m_grade"))),
+        ("M Score", _display_number(result.get("m_score"), 3)),
+        ("M Rank", _display_rank(result.get("m_rank"))),
+        ("Final Score", _display_number(result.get("final_score"), 6)),
+    )
+    for column, (label, value) in zip(columns, metrics):
+        column.metric(label, value)
 
 
 def _render_axes(context: Mapping[str, Any]) -> None:
@@ -313,3 +317,20 @@ def _display(value: Any) -> str:
     if isinstance(value, int):
         return f"{value:,}"
     return str(value)
+
+def _display_number(value: Any, digits: int) -> str:
+    if value in (None, ""):
+        return "-"
+    try:
+        return f"{float(value):,.{digits}f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _display_rank(value: Any) -> str:
+    if value in (None, ""):
+        return "-"
+    try:
+        return f"{int(value):,}"
+    except (TypeError, ValueError):
+        return str(value)
