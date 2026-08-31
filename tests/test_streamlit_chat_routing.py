@@ -512,11 +512,12 @@ def test_ai_panel_header_uses_normal_flow_and_reserves_control_space() -> None:
 
     assert '[data-testid="stElementContainer"]:has(.chat-panel-header)' in source
     assert "position: sticky !important;" not in source
-    assert "margin-bottom: 0.7rem;" in source
+    assert "margin-bottom: 0;" in source
     assert ".chat-panel-header" in source
     assert "padding-right: 5.4rem;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
-    assert "padding-bottom: 0.65rem;" in source
+    assert "안녕하세요. EosWos AI Agent입니다. 무엇을 도와드릴까요?" in source
+    assert "padding-bottom: 0;" in source
     assert source.count('class="chat-panel-header"') == 1
 
 

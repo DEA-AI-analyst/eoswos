@@ -15,7 +15,14 @@ def test_home_exposes_one_plain_text_prompt_without_get_field_name() -> None:
     input_markup = HTML.split('id="agent-home-first-prompt-input"', 1)[1].split("/>", 1)[0]
     assert "name=" not in input_markup
     assert 'autocomplete="off"' in input_markup
-    assert "인증정보·계좌정보 등 민감정보는 입력하지 마세요." in HTML
+    assert "AI Agent 사용하기" in HTML
+    assert "메자닌 평가와 분석 방법을 질문해 주세요." not in HTML
+    assert "대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." in HTML
+    assert "agent-home-first-prompt-help" not in HTML
+    assert 'id="agent-home-first-prompt-status"' in HTML
+    assert "hidden></p>" in HTML
+    assert "<span>질문하기</span>" not in HTML
+    assert 'aria-label="질문 보내기"' in HTML
 
 
 def test_home_one_shot_state_stores_only_used_and_request_id() -> None:

@@ -310,11 +310,11 @@ st.markdown(
         }
 
         [data-testid="stElementContainer"]:has(.chat-panel-header) {
-            margin-bottom: 0.7rem;
+            margin-bottom: 0;
         }
         .chat-panel-header {
             padding-right: 5.4rem;
-            padding-bottom: 0.65rem;
+            padding-bottom: 0;
         }
         .chat-title {
             padding: 0.25rem 0 0.1rem;
@@ -521,7 +521,7 @@ def _initial_messages() -> list[dict[str, Any]]:
         {
             "role": "assistant",
             "kind": "text",
-            "content": "안녕하세요. EosWos AI입니다. 무엇을 도와드릴까요?",
+            "content": "안녕하세요. EosWos AI Agent입니다. 무엇을 도와드릴까요?",
         }
     ]
 

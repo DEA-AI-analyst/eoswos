@@ -156,7 +156,7 @@
             <section class="agent-home__first-prompt" aria-labelledby="agent-home-first-prompt-title">
                 <form id="agent-home-first-prompt-form" autocomplete="off" novalidate>
                     <label id="agent-home-first-prompt-title" for="agent-home-first-prompt-input">
-                        EosWos AI에 먼저 질문해 보세요
+                        AI Agent 사용하기
                     </label>
                     <div class="agent-home__first-prompt-control">
                         <input
@@ -166,17 +166,12 @@
                             autocomplete="off"
                             autocapitalize="off"
                             spellcheck="false"
-                            aria-describedby="agent-home-first-prompt-help agent-home-first-prompt-status"
-                            placeholder="메자닌 평가와 분석 방법을 질문해 주세요." />
-                        <button id="agent-home-first-prompt-submit" type="submit">
-                            <span>질문하기</span>
+                            placeholder="대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." />
+                        <button id="agent-home-first-prompt-submit" type="submit" aria-label="질문 보내기" title="질문 보내기">
                             <i data-lucide="send-horizontal" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <p id="agent-home-first-prompt-help" class="agent-home__first-prompt-help">
-                        첫 질문 후 대화는 AI 패널에서 계속됩니다. 평가 요청은 정형 입력화면으로 안내됩니다. 인증정보·계좌정보 등 민감정보는 입력하지 마세요.
-                    </p>
-                    <p id="agent-home-first-prompt-status" class="agent-home__first-prompt-status" role="status" aria-live="polite"></p>
+                    <p id="agent-home-first-prompt-status" role="status" aria-live="polite" hidden></p>
                 </form>
             </section>
 

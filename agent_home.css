@@ -233,12 +233,13 @@
 
 .agent-home__first-prompt button {
     display: inline-flex;
-    min-width: 112px;
+    width: 50px;
+    min-width: 50px;
     height: 50px;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    padding: 0 17px;
+    gap: 0;
+    padding: 0;
     color: #ffffff;
     font-size: 14px;
     font-weight: 750;
