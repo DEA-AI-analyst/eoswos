@@ -37,11 +37,14 @@ def test_agent_home_return_matches_ai_launcher_and_uses_mobile_house_icon() -> N
 
     assert 'aria-label="Agent Home으로 이동"' in html
     assert 'class="agent-home-return__label"' in html
-    assert ">Agent Home</span>" in html
+    assert ">Home</span>" in html
+    assert ">Agent Home</span>" not in html
     assert "agent-home-return__label--compact" not in html
     assert "right: 16px;" in css
     assert "bottom: 124px;" in css
+    assert "width: 112px;" in css
     assert "min-width: 112px;" in css
+    assert "gap: 7px;" in css
     assert "padding: 0 21px;" in css
     assert "border-radius: 999px;" in css
     assert (

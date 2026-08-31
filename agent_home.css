@@ -506,11 +506,12 @@
     bottom: 124px;
     z-index: 10018;
     display: inline-flex;
-    width: auto;
+    width: 112px;
     min-width: 112px;
     height: 48px;
     align-items: center;
     justify-content: center;
+    gap: 7px;
     padding: 0 21px;
     color: #ffffff;
     font: 700 14px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
@@ -534,7 +535,7 @@
 }
 
 .agent-home-return svg {
-    display: none;
+    display: block;
     width: 18px;
     height: 18px;
 }
