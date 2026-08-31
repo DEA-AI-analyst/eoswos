@@ -51,7 +51,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "M4",
         "34",
         "1,261",
-        "0.681641",
+        "0.682",
         "DART 재무정보 + 검증된 KRX 상장주식수",
         "2026-06-30",
         "FROZEN_REFERENCE",
@@ -66,6 +66,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         == ["M Grade", "M Score", "M Rank", "Final Score"]
     )
     assert key_results.cell(1, 1).text == "34"
+    assert key_results.cell(1, 3).text == "0.682"
     assert "EOSWOS" not in text
     for run in _body_runs(document):
         if not run.text:

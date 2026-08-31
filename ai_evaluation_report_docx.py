@@ -161,7 +161,7 @@ def _add_key_results(document: Document, context: Mapping[str, Any]) -> None:
         result.get("m_grade"),
         _number(result.get("m_score"), 0),
         _rank(result.get("m_rank")),
-        _number(result.get("final_score"), 6),
+        _number(result.get("final_score"), 3),
     )
     for index, label in enumerate(headers):
         _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)

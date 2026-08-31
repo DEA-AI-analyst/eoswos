@@ -242,7 +242,7 @@ def _render_key_results(context: Mapping[str, Any]) -> None:
         ("M Grade", _display(result.get("m_grade"))),
         ("M Score", _display_number(result.get("m_score"), 0)),
         ("M Rank", _display_rank(result.get("m_rank"))),
-        ("Final Score", _display_number(result.get("final_score"), 6)),
+        ("Final Score", _display_number(result.get("final_score"), 3)),
     )
     for column, (label, value) in zip(columns, metrics):
         column.metric(label, value)
@@ -321,7 +321,7 @@ def _build_price_basis_detail_rows(price_basis: Any) -> list[dict[str, str]]:
                 "M": _display(item.get("m_grade")),
                 "M Score": _display_number(item.get("m_score"), 0),
                 "Rank": _display_rank(item.get("final_rank")),
-                "Final Score": _display_number(item.get("final_score"), 6),
+                "Final Score": _display_number(item.get("final_score"), 3),
                 "e_M": _display(item_e.get("grade")),
                 "p_M": _display(item_p.get("grade")),
                 "s_M": _display(item_s.get("grade")),

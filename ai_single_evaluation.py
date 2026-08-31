@@ -304,6 +304,13 @@ st.markdown(
             background: #f2f6fb;
             font-weight: 650;
         }
+        .eoswos-source-details-marker { display: none; }
+        [data-testid="stExpander"]:has(.eoswos-source-details-marker)
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stExpander"]:has(.eoswos-source-details-marker) code {
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+        }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
         [data-testid="stElementContainer"]:has([data-testid="stIFrame"]),
         [data-testid="stElementContainer"]:has([data-testid="stCustomComponentV1"]) {
@@ -543,6 +550,10 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         _render_report_table(rows, center_all=True)
 
     with st.expander("상세 출처 보기"):
+        st.markdown(
+            '<span class="eoswos-source-details-marker"></span>',
+            unsafe_allow_html=True,
+        )
         st.write(f"요청 ID: `{result.get('request_id', '-')}`")
         st.write(f"평가기준일: `{result.get('price_basis_date', '-')}`")
         st.write(f"발행회사: {result.get('issuer_company', '-')}")

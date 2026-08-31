@@ -115,7 +115,7 @@ def build_canonical_report_context(
         {
             "company": result.get("company") or result.get("underlying_company"),
             "issuer_company": result.get("issuer_company"),
-            "underlying_company": result.get("underlying_company"),
+            "underlying_company": _same_entity_label(result.get("underlying_company")),
             "product_type": result.get("product_type") or submitted.get("product_type"),
             "evaluation_type": evaluation_type,
             "price_basis_date": result.get("price_basis_date"),
@@ -346,6 +346,12 @@ def _safe_mapping(value: Any) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         return {}
     return {str(key): _scalar(item) for key, item in value.items()}
+
+
+def _same_entity_label(value: Any) -> Any:
+    if str(value or "").strip() == "좌동":
+        return "상동"
+    return value
 
 
 def _without_empty(value: Mapping[str, Any]) -> dict[str, Any]:

@@ -59,7 +59,7 @@ def _show_confirmed(at, result: dict):
 def test_report_key_result_display_matches_evaluation_card_precision() -> None:
     assert _display_number(74.05451, 0) == "74"
     assert _display_number(74.05451, 3) == "74.055"
-    assert _display_number(1.478863, 6) == "1.478863"
+    assert _display_number(1.478863, 3) == "1.479"
     assert _display_rank(1261) == "1,261"
 
 
@@ -94,7 +94,7 @@ def test_report_table_alignment_and_axis_score_precision() -> None:
     assert [row["기준"] for row in details] == ["1D", "1W", "1M"]
     assert all(row["가격"] == "10,850" for row in details)
     assert all(row["M Score"] == "74" for row in details)
-    assert all(row["Final Score"] == "1.478863" for row in details)
+    assert all(row["Final Score"] == "1.479" for row in details)
     detail_html = _report_table_html(details, center_all=True)
     assert "eoswos-data-table--wide" in detail_html
     assert "text-align:left" not in detail_html
@@ -122,6 +122,10 @@ def test_chat_input_width_tracks_report_width() -> None:
     assert '[data-testid="stBottomBlockContainer"]' in source
     assert "max-width: 720px !important" in source
     assert "max-width: 794px !important" in source
+    assert "eoswos-source-details-marker" in source
+    assert "font-size: 0.875rem !important" in source
+
+
 def test_report_button_generates_dedicated_editable_draft(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
     confirmed = _confirmed_result()

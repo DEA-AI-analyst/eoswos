@@ -163,6 +163,16 @@ def test_generation_context_limits_ai_to_narrative() -> None:
     assert "직접 반복하지 말고" in AI_REPORT_GENERATION_REQUEST
 
 
+def test_report_context_uses_standard_same_entity_label() -> None:
+    result = _result()
+    result["underlying_company"] = "좌동"
+
+    context = build_canonical_report_context(result, submitted_input=_submitted())
+
+    assert context["common_info"]["underlying_company"] == "상동"
+    assert result["underlying_company"] == "좌동"
+
+
 def test_quantitative_parity_accepts_confirmed_values_and_rejects_drift() -> None:
     canonical = build_canonical_report_context(_result(), submitted_input=_submitted())
     valid = "M Grade는 M4이며 M Score는 34.133, M Rank는 1,261입니다. Final Score는 0.681641입니다."
