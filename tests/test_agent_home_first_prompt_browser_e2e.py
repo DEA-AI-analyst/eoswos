@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -11,6 +12,10 @@ import pytest
 
 
 HOME_URL = os.getenv("EOSWOS_HOME_E2E_URL", "").strip()
+EAGENT_ORIGIN = os.getenv(
+    "EOSWOS_EAGENT_E2E_ORIGIN",
+    "http://127.0.0.1:8511",
+).strip()
 if not HOME_URL:
     pytest.skip(
         "Set EOSWOS_HOME_E2E_URL to run the real-browser first-prompt E2E.",
@@ -29,6 +34,7 @@ STORAGE_KEY = "eoswos.agentHomeFirstPrompt.v1"
 SCREENSHOT_DIR = Path(
     os.getenv("EOSWOS_E2E_SCREENSHOT_DIR", Path.cwd() / ".e2e-screenshots")
 )
+COLD_START_GATE = os.getenv("EOSWOS_E2E_COLD_START", "") == "1"
 
 
 @pytest.fixture(scope="module")
@@ -91,6 +97,31 @@ def _wait_for_evaluation_form(driver, prompt: str) -> None:
     ]
     assert len(user_occurrences) == 1
     driver.switch_to.default_content()
+
+
+@pytest.mark.skipif(not COLD_START_GATE, reason="cold-start gate is opt-in")
+def test_cold_start_keeps_prompt_queued_until_ready(driver) -> None:
+    _open_new_tab(driver)
+    prompt = "평가."
+    prompt_input = driver.find_element(By.ID, "agent-home-first-prompt-input")
+    started = time.perf_counter()
+    prompt_input.send_keys(prompt, Keys.ENTER)
+    WebDriverWait(driver, 3).until(
+        lambda _driver: driver.find_element(
+            By.ID,
+            "ai-evaluation-panel",
+        ).get_attribute("aria-hidden") == "false"
+    )
+    panel_open_seconds = time.perf_counter() - started
+    assert panel_open_seconds < 3
+
+    _wait_for_evaluation_form(driver, prompt)
+    ready_seconds = time.perf_counter() - started
+    assert ready_seconds < 90
+    print(
+        f"cold_start_panel_open_seconds={panel_open_seconds:.3f} "
+        f"cold_start_ready_seconds={ready_seconds:.3f}"
+    )
 
 
 def test_desktop_one_shot_cross_origin_reload_and_independent_new_tab(driver) -> None:
@@ -186,11 +217,12 @@ def test_malicious_origin_and_wrong_source_cannot_release_queued_prompt(driver) 
             data: message,
         }));
         window.dispatchEvent(new MessageEvent("message", {
-            origin: "http://127.0.0.1:8511",
+            origin: arguments[0],
             source: window,
             data: message,
         }));
         """,
+        EAGENT_ORIGIN,
     )
     assert driver.execute_script("return window.__eoswosUnexpectedBridgeSends;") == 0
 
