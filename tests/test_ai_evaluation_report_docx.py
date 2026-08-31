@@ -17,6 +17,16 @@ def _document_text(document: Document) -> str:
     return "\n".join(chunks)
 
 
+def _body_runs(document: Document):
+    for paragraph in document.paragraphs:
+        yield from paragraph.runs
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    yield from paragraph.runs
+
+
 def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     context = build_canonical_report_context(
         _result(),
@@ -35,7 +45,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     assert abs(section.page_height.mm - 297) < 0.1
     text = _document_text(document)
     for expected in (
-        "EOSWOS AI 평가보고서",
+        "EosWos AI 평가보고서",
         "AI Evaluation Report",
         "신규평가",
         "M4",
@@ -49,13 +59,24 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "개별 성공확률이나 투자승인·부결을 의미하지 않습니다",
     ):
         assert expected in text
+    assert "EOSWOS" not in text
+    for run in _body_runs(document):
+        if not run.text:
+            continue
+        expected_size = 16.5 if run.text == "EosWos AI 평가보고서" else 10.0
+        assert abs(run.font.size.pt - expected_size) < 0.01
+    for section in document.sections:
+        for paragraph in section.footer.paragraphs:
+            for run in paragraph.runs:
+                if run.text:
+                    assert abs(run.font.size.pt - 8.0) < 0.01
     assert "999999" not in text
 
 
 def test_report_filename_is_safe_and_docx_only() -> None:
     context = build_canonical_report_context(_result(), submitted_input=_submitted())
     filename = report_filename(context)
-    assert filename.startswith("EOSWOS_AI_평가보고서_현대건설_")
+    assert filename.startswith("EosWos_AI_평가보고서_현대건설_")
     assert filename.endswith(".docx")
     assert "/" not in filename and "\\" not in filename
 

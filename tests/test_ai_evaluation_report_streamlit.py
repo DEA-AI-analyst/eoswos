@@ -3,7 +3,12 @@ import copy
 import pytest
 
 from chatbase_client import ChatbaseCallResult
-from ai_evaluation_report_ui import _display_number, _display_rank
+from ai_evaluation_report_ui import (
+    _build_price_basis_detail_rows,
+    _display_number,
+    _display_rank,
+    _style_report_table,
+)
 from test_streamlit_chat_routing import _app, _provenance_result, _show_result
 
 
@@ -54,6 +59,54 @@ def test_report_key_result_display_matches_evaluation_card_precision() -> None:
     assert _display_number(74.05451, 3) == "74.055"
     assert _display_number(1.478863, 6) == "1.478863"
     assert _display_rank(1261) == "1,261"
+
+def test_report_table_alignment_and_axis_score_precision() -> None:
+    axes = _style_report_table(
+        [{"축": "e_M", "역할": "구조적 효율성", "Grade": "E1", "Score": "0.900", "Rank": "396"}],
+        centered_columns=("축", "Grade"),
+    )
+    assert axes.table_styles == [
+        {"selector": "th", "props": [("text-align", "center")]}
+    ]
+    axes._compute()
+    assert ("text-align", "center") in axes.ctx[(0, 0)]
+    assert ("text-align", "center") in axes.ctx[(0, 2)]
+    assert ("text-align", "center") not in axes.ctx[(0, 1)]
+    assert _display_number(0.9, 3) == "0.900"
+
+    details = _build_price_basis_detail_rows(
+        {
+            basis: {
+                "price": 10850,
+                "m_grade": "M1",
+                "m_score": 74.05451,
+                "final_rank": 396,
+                "final_score": 1.478863,
+                "e_m": {"grade": "E1"},
+                "p_m": {"grade": "P2"},
+                "s_m": {"grade": "S1"},
+                "reach_pk_strength": "PK 상위",
+                "timing_point": "당일",
+            }
+            for basis in ("1D", "1W", "1M")
+        }
+    )
+    assert [row["기준"] for row in details] == ["1D", "1W", "1M"]
+    assert all(row["가격"] == "10,850" for row in details)
+    assert all(row["M Score"] == "74" for row in details)
+    assert all(row["Final Score"] == "1.478863" for row in details)
+    detail_style = _style_report_table(details, center_all=True)
+    detail_style._compute()
+    assert all(
+        ("text-align", "center") in detail_style.ctx[(0, column)]
+        for column in range(len(details[0]))
+    )
+    price = _style_report_table(
+        [{"가격기준": "1D", "M Grade": "M1", "e_M": "E1", "p_M": "P2", "s_M": "S1"}],
+        center_all=True,
+    )
+    price._compute()
+    assert all(("text-align", "center") in price.ctx[(0, column)] for column in range(5))
 
 def test_report_button_generates_dedicated_editable_draft(monkeypatch) -> None:
     at, calls = _app(monkeypatch)

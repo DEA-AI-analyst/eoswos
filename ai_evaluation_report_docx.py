@@ -1,4 +1,4 @@
-"""Deterministic one-page DOCX renderer for the EOSWOS AI evaluation report."""
+"""Deterministic one-page DOCX renderer for the EosWos AI evaluation report."""
 
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ MID_GRAY = "6B7280"
 WHITE = "FFFFFF"
 BLACK = "111827"
 FONT = "Malgun Gothic"
+BODY_FONT_SIZE = 10.0
+FOOTER_FONT_SIZE = 8.0
 REPORT_DISCLAIMER = (
     "M Grade는 상대적 검토 우선순위를 나타내며 개별 성공확률이나 투자승인·부결을 의미하지 "
     "않습니다. 본 보고서는 AI 기반 의사결정 지원자료이며 최종 투자판단은 별도의 검토를 통해 이루어집니다."
@@ -70,7 +72,7 @@ def report_filename(canonical_context: Mapping[str, Any]) -> str:
     request_id = str(canonical_context.get("request_id") or "report").strip()
     safe_company = re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", company).strip("_") or "evaluation"
     safe_request = re.sub(r"[^0-9A-Za-z_-]+", "", request_id)[:16] or "report"
-    return f"EOSWOS_AI_평가보고서_{safe_company}_{safe_request}.docx"
+    return f"EosWos_AI_평가보고서_{safe_company}_{safe_request}.docx"
 
 
 def _configure_document(document: Document) -> None:
@@ -89,7 +91,7 @@ def _configure_document(document: Document) -> None:
     normal.font.name = FONT
     normal._element.rPr.rFonts.set(qn("w:eastAsia"), FONT)
     normal._element.rPr.rFonts.set(qn("w:ascii"), FONT)
-    normal.font.size = Pt(7.6)
+    normal.font.size = Pt(BODY_FONT_SIZE)
     normal.font.color.rgb = RGBColor.from_string(BLACK)
     normal.paragraph_format.space_after = Pt(0)
     normal.paragraph_format.line_spacing = 1.0
@@ -100,11 +102,11 @@ def _add_header(document: Document, context: Mapping[str, Any]) -> None:
     title = document.add_paragraph()
     title.paragraph_format.space_after = Pt(0)
     title.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    _run(title, "EOSWOS AI 평가보고서", size=16.5, bold=True, color=NAVY)
+    _run(title, "EosWos AI 평가보고서", size=16.5, bold=True, color=NAVY)
     subtitle = document.add_paragraph()
     subtitle.paragraph_format.space_after = Pt(2)
-    _run(subtitle, "AI Evaluation Report", size=8.5, bold=True, color=BLUE)
-    _run(subtitle, f"   |   평가유형: {evaluation_type}", size=8, color=MID_GRAY)
+    _run(subtitle, "AI Evaluation Report", size=BODY_FONT_SIZE, bold=True, color=BLUE)
+    _run(subtitle, f"   |   평가유형: {evaluation_type}", size=BODY_FONT_SIZE, color=MID_GRAY)
     _paragraph_rule(subtitle, color=BLUE, size="10")
 
 
@@ -162,14 +164,14 @@ def _add_key_results(document: Document, context: Mapping[str, Any]) -> None:
         _number(result.get("final_score"), 6),
     )
     for index, label in enumerate(headers):
-        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=7.1, align=WD_ALIGN_PARAGRAPH.CENTER)
+        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)
         _shade(table.cell(0, index), NAVY)
         _cell_text(
             table.cell(1, index),
             values[index],
             bold=True,
             color=NAVY,
-            size=14 if index == 0 else 9.5,
+            size=BODY_FONT_SIZE,
             align=WD_ALIGN_PARAGRAPH.CENTER,
         )
         _shade(table.cell(1, index), PALE_BLUE if index == 0 else WHITE)
@@ -187,14 +189,14 @@ def _add_axes(document: Document, context: Mapping[str, Any]) -> None:
     )
     for index, (label, raw_axis) in enumerate(labels):
         axis = _mapping(raw_axis)
-        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=6.8, align=WD_ALIGN_PARAGRAPH.CENTER)
+        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)
         _shade(table.cell(0, index), BLUE)
         value = _joined_values(
             ("Grade", axis.get("grade")),
             ("Score", _number(axis.get("score"), 3)),
             ("Rank", _rank(axis.get("rank"))),
         )
-        _cell_text(table.cell(1, index), value, bold=True, color=BLACK, size=7.3, align=WD_ALIGN_PARAGRAPH.CENTER)
+        _cell_text(table.cell(1, index), value, bold=True, color=BLACK, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)
 
 
 def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
@@ -204,7 +206,7 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
     table = document.add_table(rows=1, cols=5)
     _configure_table(table, (1600, 2200, 2420, 2420, 2420))
     for index, label in enumerate(("가격기준", "M Grade", "e_M", "p_M", "s_M")):
-        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=7.0, align=WD_ALIGN_PARAGRAPH.CENTER)
+        _cell_text(table.cell(0, index), label, bold=True, color=WHITE, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)
         _shade(table.cell(0, index), NAVY)
     basis_grades: list[tuple[str, str]] = []
     for raw_row in rows:
@@ -221,12 +223,12 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
         basis = str(row.get("price_basis") or "")
         basis_grades.append((basis, str(row.get("m_grade") or "")))
         for index, value in enumerate(values):
-            _cell_text(cells[index], value, bold=index in {0, 1}, size=7.1, align=WD_ALIGN_PARAGRAPH.CENTER)
+            _cell_text(cells[index], value, bold=index in {0, 1}, size=BODY_FONT_SIZE, align=WD_ALIGN_PARAGRAPH.CENTER)
     interpretation = _price_consistency_sentence(basis_grades)
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_before = Pt(1)
     paragraph.paragraph_format.space_after = Pt(0)
-    _run(paragraph, interpretation, size=7.2, color=MID_GRAY)
+    _run(paragraph, interpretation, size=BODY_FONT_SIZE, color=MID_GRAY)
 
 
 def _add_provenance(document: Document, context: Mapping[str, Any]) -> None:
@@ -263,9 +265,7 @@ def _add_commentary(document: Document, heading: str, text: str) -> None:
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_after = Pt(0)
     paragraph.paragraph_format.line_spacing = 0.94
-    length = len(str(text or ""))
-    size = 7.2 if length <= 650 else 6.7 if length <= 1000 else 6.2
-    _run(paragraph, str(text or "미작성").strip(), size=size, color=BLACK)
+    _run(paragraph, str(text or "미작성").strip(), size=BODY_FONT_SIZE, color=BLACK)
 
 
 def _add_footer(document: Document, context: Mapping[str, Any]) -> None:
@@ -277,7 +277,7 @@ def _add_footer(document: Document, context: Mapping[str, Any]) -> None:
     text = REPORT_DISCLAIMER
     if context.get("evaluation_type") == "사후관리 재평가":
         text = f"{text} {MONITORING_DISCLAIMER}"
-    _run(paragraph, text, size=5.9, color=MID_GRAY)
+    _run(paragraph, text, size=FOOTER_FONT_SIZE, color=MID_GRAY)
 
 
 def _section_heading(document: Document, text: str) -> None:
@@ -285,7 +285,7 @@ def _section_heading(document: Document, text: str) -> None:
     paragraph.paragraph_format.space_before = Pt(2.5)
     paragraph.paragraph_format.space_after = Pt(0.8)
     paragraph.paragraph_format.keep_with_next = True
-    _run(paragraph, text, size=8.3, bold=True, color=NAVY)
+    _run(paragraph, text, size=BODY_FONT_SIZE, bold=True, color=NAVY)
 
 
 def _label_value_table(document: Document, rows: Sequence[tuple[Any, Any, Any, Any]], *, widths: tuple[int, int, int, int]) -> None:
@@ -301,7 +301,7 @@ def _label_value_table(document: Document, rows: Sequence[tuple[Any, Any, Any, A
                 value,
                 bold=is_label,
                 color=NAVY if is_label else BLACK,
-                size=6.9,
+                size=BODY_FONT_SIZE,
                 blank_if_empty=value == "",
             )
             _shade(cells[index], PALE_GRAY if is_label else WHITE)
@@ -366,7 +366,7 @@ def _cell_text(
     *,
     bold: bool = False,
     color: str = BLACK,
-    size: float = 7.0,
+    size: float = BODY_FONT_SIZE,
     align=WD_ALIGN_PARAGRAPH.LEFT,
     blank_if_empty: bool = False,
 ) -> None:

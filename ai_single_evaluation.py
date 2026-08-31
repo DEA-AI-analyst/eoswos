@@ -15,6 +15,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from ai_evaluation_report_ui import (
+    _build_price_basis_detail_rows,
+    _style_report_table,
     clear_report_session,
     ensure_report_session,
     generate_ai_report,
@@ -378,6 +380,11 @@ st.markdown(
             font-size: 0.82rem;
             line-height: 1.55;
         }
+        @media (min-width: 900px) {
+            .block-container {
+                max-width: 794px;
+            }
+        }
         @media (max-width: 520px) {
             .block-container {
                 padding-top: 0.55rem;
@@ -476,38 +483,13 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         unsafe_allow_html=True,
     )
 
-    rows: list[dict[str, Any]] = []
-    for basis in ("1D", "1W", "1M"):
-        item = price_basis.get(basis, {}) if isinstance(price_basis, dict) else {}
-        item_e = item.get("e_m", {}) if isinstance(item, dict) else {}
-        item_p = item.get("p_m", {}) if isinstance(item, dict) else {}
-        item_s = item.get("s_m", {}) if isinstance(item, dict) else {}
-        rows.append(
-            {
-                "기준": basis,
-                "가격": item.get("price"),
-                "M": item.get("m_grade"),
-                "M Score": item.get("m_score"),
-                "Rank": item.get("final_rank"),
-                "Final": item.get("final_score"),
-                "e_M": item_e.get("grade"),
-                "p_M": item_p.get("grade"),
-                "s_M": item_s.get("grade"),
-                "도달/PK": item.get("reach_pk_strength"),
-                "도달지점": item.get("timing_point"),
-            }
-        )
+    rows = _build_price_basis_detail_rows(price_basis)
 
     with st.expander("1D · 1W · 1M 세부 결과"):
         st.dataframe(
-            rows,
+            _style_report_table(rows, center_all=True),
             hide_index=True,
             width="stretch",
-            column_config={
-                "가격": st.column_config.NumberColumn(format="localized"),
-                "M Score": st.column_config.NumberColumn(format="%.6f"),
-                "Final": st.column_config.NumberColumn(format="%.9f"),
-            },
         )
 
     with st.expander("상세 출처 보기"):

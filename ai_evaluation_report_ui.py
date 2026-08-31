@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import streamlit as st
 
 from ai_evaluation_report import (
@@ -262,11 +263,11 @@ def _render_axes(context: Mapping[str, Any]) -> None:
                 "축": key,
                 "역할": meaning,
                 "Grade": axis.get("grade", "-"),
-                "Score": axis.get("score", "-"),
-                "Rank": axis.get("rank", "-"),
+                "Score": _display_number(axis.get("score"), 3),
+                "Rank": _display_rank(axis.get("rank")),
             }
         )
-    st.dataframe(rows, hide_index=True, width="stretch")
+    st.dataframe(_style_report_table(rows, centered_columns=("축", "Grade")), hide_index=True, width="stretch")
 
 
 def _render_price_basis(context: Mapping[str, Any]) -> None:
@@ -285,7 +286,7 @@ def _render_price_basis(context: Mapping[str, Any]) -> None:
                 "s_M": _mapping(item.get("s_M")).get("grade", "-"),
             }
         )
-    st.dataframe(rows, hide_index=True, width="stretch")
+    st.dataframe(_style_report_table(rows, center_all=True), hide_index=True, width="stretch")
 
 
 def _render_provenance(context: Mapping[str, Any]) -> None:
@@ -305,6 +306,50 @@ def _render_provenance(context: Mapping[str, Any]) -> None:
     st.dataframe(rows, hide_index=True, width="stretch")
 
 
+def _build_price_basis_detail_rows(price_basis: Any) -> list[dict[str, str]]:
+    source = price_basis if isinstance(price_basis, Mapping) else {}
+    rows: list[dict[str, str]] = []
+    for basis in ("1D", "1W", "1M"):
+        item = _mapping(source.get(basis))
+        item_e = _mapping(item.get("e_m"))
+        item_p = _mapping(item.get("p_m"))
+        item_s = _mapping(item.get("s_m"))
+        rows.append(
+            {
+                "기준": basis,
+                "가격": _display_number(item.get("price"), 0),
+                "M": _display(item.get("m_grade")),
+                "M Score": _display_number(item.get("m_score"), 0),
+                "Rank": _display_rank(item.get("final_rank")),
+                "Final Score": _display_number(item.get("final_score"), 6),
+                "e_M": _display(item_e.get("grade")),
+                "p_M": _display(item_p.get("grade")),
+                "s_M": _display(item_s.get("grade")),
+                "도달/PK": _display(item.get("reach_pk_strength")),
+                "도달지점": _display(item.get("timing_point")),
+            }
+        )
+    return rows
+
+
+def _style_report_table(
+    rows: list[dict[str, Any]],
+    *,
+    centered_columns: tuple[str, ...] = (),
+    center_all: bool = False,
+):
+    frame = pd.DataFrame(rows)
+    styled = frame.style.set_table_styles(
+        [{"selector": "th", "props": [("text-align", "center")]}]
+    )
+    columns = list(frame.columns) if center_all else [
+        column for column in centered_columns if column in frame.columns
+    ]
+    if columns:
+        styled = styled.set_properties(subset=columns, **{"text-align": "center"})
+    return styled
+
+
 def _mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
@@ -317,6 +362,7 @@ def _display(value: Any) -> str:
     if isinstance(value, int):
         return f"{value:,}"
     return str(value)
+
 
 def _display_number(value: Any, digits: int) -> str:
     if value in (None, ""):
