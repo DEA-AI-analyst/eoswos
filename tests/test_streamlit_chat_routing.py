@@ -505,6 +505,7 @@ def test_scroll_scripts_prefer_current_streamlit_iframe_api() -> None:
     assert 'iframe = getattr(st, "iframe", None)' in source
     assert 'iframe(source, width=1, height=1, tab_index=-1)' in source
     assert ':has([data-testid="stIFrame"])' in source
+    assert ':has([data-testid="stCustomComponentV1"])' in source
     assert "    components.html(" not in source
 
 def test_ai_panel_header_uses_normal_flow_and_reserves_control_space() -> None:

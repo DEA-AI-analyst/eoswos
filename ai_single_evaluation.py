@@ -297,7 +297,8 @@ st.markdown(
             font-weight: 650;
         }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
-        [data-testid="stElementContainer"]:has([data-testid="stIFrame"]) {
+        [data-testid="stElementContainer"]:has([data-testid="stIFrame"]),
+        [data-testid="stElementContainer"]:has([data-testid="stCustomComponentV1"]) {
             position: fixed !important;
             width: 0 !important;
             height: 0 !important;
