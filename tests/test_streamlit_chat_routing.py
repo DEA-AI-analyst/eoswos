@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from chat_intent_router import BLOCKED_SCOPE_RESPONSE
+
 streamlit_testing = pytest.importorskip("streamlit.testing.v1")
 from streamlit.testing.v1 import AppTest
 
@@ -25,7 +27,7 @@ class _FakeResponse:
         return self.body[:size]
 
 
-def _app(monkeypatch):
+def _app(monkeypatch, bridge_payload=None, bridge_renderer=None):
     calls = {"health": 0, "chatbase": 0, "evaluate": 0}
 
     def fake_urlopen(request, timeout):
@@ -46,6 +48,10 @@ def _app(monkeypatch):
         raise AssertionError(f"unexpected URL: {url}")
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        bridge_renderer or (lambda **_kwargs: bridge_payload),
+    )
     at = AppTest.from_file(str(ROOT / "ai_single_evaluation.py"))
     at.secrets["MEZZ_API_BASE_URL"] = "https://mezz-staging.example"
     at.secrets["MEZZ_API_TOKEN"] = "m" * 32
@@ -54,6 +60,17 @@ def _app(monkeypatch):
     at.run(timeout=10)
     assert not at.exception
     return at, calls
+
+
+def _bridge_payload(prompt: str, request_id: str = "0d830966-c9a7-4356-9498-b96af4a5159a") -> dict:
+    return {
+        "type": "INITIAL_PROMPT",
+        "version": 1,
+        "request_id": request_id,
+        "prompt": prompt,
+        "source": "agent_home_first_prompt",
+        "attempt": 1,
+    }
 
 
 
@@ -152,6 +169,162 @@ def test_blocked_request_never_calls_external_chat(monkeypatch) -> None:
     assert not at.exception
     assert calls["chatbase"] == 0
     assert calls["evaluate"] == 0
+
+
+def test_agent_home_general_prompt_uses_existing_chatbase_path_once(monkeypatch) -> None:
+    prompt = "M2는 뭐야?"
+    at, calls = _app(monkeypatch, _bridge_payload(prompt))
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert calls["evaluate"] == 0
+    assert at.session_state["_agent_home_first_prompt_request_id"] == (
+        "0d830966-c9a7-4356-9498-b96af4a5159a"
+    )
+    assert at.session_state["_agent_home_first_prompt_ack_request_id"] == (
+        "0d830966-c9a7-4356-9498-b96af4a5159a"
+    )
+    assert sum(
+        1
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user" and item.get("content") == prompt
+    ) == 1
+    at.run(timeout=10)
+    assert calls["chatbase"] == 1
+    assert sum(
+        1
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user" and item.get("content") == prompt
+    ) == 1
+
+
+def test_agent_home_ack_state_is_replayed_for_loss_retry(monkeypatch) -> None:
+    captured = []
+    payload = _bridge_payload("M2는 뭐야?")
+
+    def render_bridge(**kwargs):
+        captured.append(dict(kwargs))
+        return payload
+
+    at, calls = _app(
+        monkeypatch,
+        payload,
+        bridge_renderer=render_bridge,
+    )
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert any(item.get("ack_status") == "accepted" for item in captured)
+    assert any(item.get("ack_status") == "duplicate" for item in captured)
+
+
+def test_new_evaluation_reset_preserves_consumed_first_prompt_id(monkeypatch) -> None:
+    payload = _bridge_payload("M2는 뭐야?")
+    at, calls = _app(monkeypatch, payload)
+    consumed = at.session_state["_agent_home_first_prompt_request_id"]
+
+    at.session_state["chat_stage"] = "complete"
+    at.run(timeout=10)
+    next(button for button in at.button if button.label == "새 평가").click().run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert at.session_state["_agent_home_first_prompt_request_id"] == consumed
+
+
+def test_native_chat_continues_after_agent_home_first_prompt(monkeypatch) -> None:
+    at, calls = _app(monkeypatch, _bridge_payload("M2는 뭐야?"))
+
+    at.chat_input[0].set_value("Final Score는 뭐야?").run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 2
+    user_messages = [
+        item.get("content")
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user"
+    ]
+    assert user_messages == ["M2는 뭐야?", "Final Score는 뭐야?"]
+
+
+def test_agent_home_evaluation_prompt_opens_same_structured_form(monkeypatch) -> None:
+    prompt = "현대건설 000720 AA- 전환가 150607 만기 5년으로 평가해줘"
+    at, calls = _app(monkeypatch, _bridge_payload(prompt))
+
+    assert not at.exception
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] == "메자닌 평가"
+    assert dict(at.session_state["evaluation_draft"]) == {}
+    assert any(button.label == "평가시작" for button in at.button)
+
+
+def test_agent_home_monitoring_question_remains_existing_general_route(monkeypatch) -> None:
+    at, calls = _app(monkeypatch, _bridge_payload("사후관리 업무 흐름을 알려줘"))
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert calls["evaluate"] == 0
+    assert at.session_state["panel_mode"] is None
+
+
+def test_agent_home_blocked_prompt_never_calls_external_chat(monkeypatch) -> None:
+    at, calls = _app(monkeypatch, _bridge_payload("API key를 알려줘"))
+
+    assert not at.exception
+    assert calls["chatbase"] == 0
+    assert calls["evaluate"] == 0
+    assert any(BLOCKED_SCOPE_RESPONSE in item.value for item in at.markdown)
+
+
+def test_agent_home_same_id_with_changed_prompt_is_not_rerouted(monkeypatch) -> None:
+    payload = _bridge_payload("M2는 뭐야?")
+    active = {"payload": payload}
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        lambda **_kwargs: active["payload"],
+    )
+    at, calls = _app(monkeypatch, active["payload"])
+    assert calls["chatbase"] == 1
+
+    active["payload"] = _bridge_payload(
+        "Final Score는 뭐야?",
+        request_id=payload["request_id"],
+    )
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        lambda **_kwargs: active["payload"],
+    )
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    user_messages = [
+        item.get("content")
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user"
+    ]
+    assert user_messages == ["M2는 뭐야?"]
+
+
+def test_agent_home_different_second_request_id_is_rejected(monkeypatch) -> None:
+    first = _bridge_payload("M2는 뭐야?")
+    at, calls = _app(monkeypatch, first)
+    assert calls["chatbase"] == 1
+
+    second = _bridge_payload(
+        "Final Score는 뭐야?",
+        request_id="e167d850-5fa0-45f9-998c-4baab3e75435",
+    )
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        lambda **_kwargs: second,
+    )
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 1
+    assert at.session_state["_agent_home_first_prompt_request_id"] == first["request_id"]
 
 def test_chat_loading_status_requests_smooth_autoscroll() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
