@@ -316,7 +316,26 @@
             return false;
         }
         try {
-            return source.parent === frame.contentWindow && source.top === window;
+            if (source.top !== window) {
+                return false;
+            }
+
+            // Streamlit Community Cloud adds a streamlitApp wrapper iframe
+            // between the public app iframe and custom components. Accept only
+            // sources whose bounded parent chain terminates at our exact app
+            // iframe; sibling or unrelated frames still fail closed.
+            let current = source;
+            for (let depth = 0; depth < 5; depth += 1) {
+                if (current === frame.contentWindow) {
+                    return true;
+                }
+                const parent = current.parent;
+                if (!parent || parent === current) {
+                    return false;
+                }
+                current = parent;
+            }
+            return false;
         } catch (error) {
             return false;
         }

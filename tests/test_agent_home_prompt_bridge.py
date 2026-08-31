@@ -121,8 +121,10 @@ def test_application_bridge_uses_exact_postmessage_origins() -> None:
     assert "postMessage(payload, \"*\")" not in widget
     assert "event.origin !== parentOrigin" in component
     assert "event.source !== window.top" in component
-    assert "source.parent === frame.contentWindow" in widget
-    assert "source.top === window" in widget
+    assert "source.top !== window" in widget
+    assert "current === frame.contentWindow" in widget
+    assert "depth < 5" in widget
+    assert "parent === current" in widget
 
 
 def test_component_allows_http_only_for_exact_loopback_e2e_origins() -> None:

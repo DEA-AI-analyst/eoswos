@@ -70,3 +70,10 @@ def test_existing_five_routes_and_clean_iframe_source_remain() -> None:
     assert "INITIAL_PROMPT" not in iframe_source
     assert "prompt=" not in WIDGET_JS
     assert "ai-contest-win.streamlit.app" in WIDGET_JS
+
+
+def test_widget_accepts_only_bounded_descendants_of_agent_frame() -> None:
+    assert "source.top !== window" in WIDGET_JS
+    assert "current === frame.contentWindow" in WIDGET_JS
+    assert "depth < 5" in WIDGET_JS
+    assert "parent === current" in WIDGET_JS
