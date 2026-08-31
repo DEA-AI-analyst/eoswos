@@ -9,6 +9,7 @@
     <meta name="author" content="Jinkook PARK" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://eoswos.com/" />
+    <link rel="preconnect" href="https://ai-contest-win.streamlit.app" crossorigin />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="EOSWOS" />
@@ -23,11 +24,12 @@
 
     <meta name="naver-site-verification" content="ccad66f9c69093825b52c06ba44f369b1f2e4f2b" />
 
-    <link rel="stylesheet" href="./agent_home.css?v=20260831-home-launcher-v3" />
+    <link rel="stylesheet" href="./agent_home.css?v=20260831-first-prompt" />
     <link rel="stylesheet" href="./ai_widget.css?v=20260828-agent-home-polish" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./agent_home.js?v=20260830-transition" defer></script>
-    <script src="./ai_widget.js?v=20260828-ai-agent-label" defer></script>
+    <script src="./agent_home_first_prompt.js?v=20260831-first-prompt" defer></script>
+    <script src="./agent_home.js?v=20260831-first-prompt" defer></script>
+    <script src="./ai_widget.js?v=20260831-first-prompt" defer></script>
 
     <style>
         :root {
@@ -150,6 +152,33 @@
                 <h1 id="agent-home-title">EosWos AI Agent</h1>
                 <p>어떤 업무를 시작할까요?</p>
             </div>
+
+            <section class="agent-home__first-prompt" aria-labelledby="agent-home-first-prompt-title">
+                <form id="agent-home-first-prompt-form" autocomplete="off" novalidate>
+                    <label id="agent-home-first-prompt-title" for="agent-home-first-prompt-input">
+                        EosWos AI에 먼저 질문해 보세요
+                    </label>
+                    <div class="agent-home__first-prompt-control">
+                        <input
+                            id="agent-home-first-prompt-input"
+                            type="text"
+                            maxlength="500"
+                            autocomplete="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                            aria-describedby="agent-home-first-prompt-help agent-home-first-prompt-status"
+                            placeholder="메자닌 평가와 분석 방법을 질문해 주세요." />
+                        <button id="agent-home-first-prompt-submit" type="submit">
+                            <span>질문하기</span>
+                            <i data-lucide="send-horizontal" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <p id="agent-home-first-prompt-help" class="agent-home__first-prompt-help">
+                        첫 질문 후 대화는 AI 패널에서 계속됩니다. 평가 요청은 정형 입력화면으로 안내됩니다. 인증정보·계좌정보 등 민감정보는 입력하지 마세요.
+                    </p>
+                    <p id="agent-home-first-prompt-status" class="agent-home__first-prompt-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
 
             <section class="agent-home__section" aria-labelledby="primary-work-title">
                 <div class="agent-home__section-heading">

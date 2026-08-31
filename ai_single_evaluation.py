@@ -15,6 +15,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+import agent_home_prompt_bridge as prompt_bridge
 import chat_intent_router as chat_router
 from chat_evaluation_context import (
     build_read_only_evaluation_context as _build_read_only_evaluation_context,
@@ -536,6 +537,14 @@ def _ensure_session() -> None:
         st.session_state["panel_mode"] = None
     if "current_evaluation" not in st.session_state:
         st.session_state["current_evaluation"] = None
+    if "_agent_home_first_prompt_request_id" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_request_id"] = None
+    if "_agent_home_first_prompt_ack_request_id" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_ack_request_id"] = None
+    if "_agent_home_first_prompt_ack_status" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_ack_status"] = None
+    if "_agent_home_first_prompt_pending" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_pending"] = None
 
 
 def _reset_conversation() -> None:
@@ -932,6 +941,72 @@ def _resolve_chat_route(
     return resolved or fallback
 
 
+def _handle_chat_prompt(prompt: str) -> ChatRoute:
+    """Route both native chat and Agent Home prompts through one path."""
+
+    history = safe_chat_history(st.session_state["chat_messages"])
+    _append_message("user", prompt)
+    st.session_state["_chat_force_follow_after_submit"] = True
+    current_evaluation = st.session_state.get("current_evaluation")
+    has_current_evaluation = isinstance(current_evaluation, dict)
+    local_decision = route_chat_message(
+        prompt,
+        has_current_evaluation=has_current_evaluation,
+    )
+    explicit_request_check = getattr(
+        chat_router,
+        "is_explicit_evaluation_request",
+        None,
+    )
+    if callable(explicit_request_check):
+        is_explicit_request = bool(explicit_request_check(prompt))
+    else:
+        is_explicit_request = local_decision.route == ChatRoute.TYPE_B_EVALUATION
+
+    if is_explicit_request:
+        decision = local_decision
+    else:
+        decision = _resolve_chat_route(
+            prompt,
+            has_current_evaluation=has_current_evaluation,
+        )
+
+    if decision.route == ChatRoute.TYPE_D_BLOCKED:
+        st.session_state["panel_mode"] = None
+        _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
+    elif decision.route == ChatRoute.TYPE_B_EVALUATION:
+        st.session_state["panel_mode"] = "메자닌 평가"
+        if st.session_state.get("chat_stage") == "complete":
+            st.session_state["chat_stage"] = "collecting"
+        _append_message("assistant", EVALUATION_FORM_RESPONSE)
+    else:
+        st.session_state["panel_mode"] = None
+        _run_chatbase_query(prompt, route=decision.route, history=history)
+    return decision.route
+
+
+def _claim_agent_home_first_prompt(value: Any) -> bool:
+    """Claim one request ID before routing and ACK duplicates without rerouting."""
+
+    request = prompt_bridge.validate_initial_prompt_payload(value)
+    if request is None:
+        return False
+    claimed_request_id = st.session_state.get("_agent_home_first_prompt_request_id")
+    if claimed_request_id is None:
+        st.session_state["_agent_home_first_prompt_request_id"] = request.request_id
+        st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
+        st.session_state["_agent_home_first_prompt_ack_status"] = "accepted"
+        st.session_state["_agent_home_first_prompt_pending"] = {
+            "request_id": request.request_id,
+            "prompt": request.prompt,
+        }
+        return True
+    if claimed_request_id == request.request_id:
+        st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
+        st.session_state["_agent_home_first_prompt_ack_status"] = "duplicate"
+    return False
+
+
 def _direct_submission_message(draft: dict[str, Any]) -> str:
     product_label = {
         SELF_STOCK_PRODUCT: "CB / BW / EB(자기주식)",
@@ -1132,6 +1207,34 @@ st.markdown(
 _ensure_session()
 today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()
 
+try:
+    bridge_value = prompt_bridge.render_agent_home_prompt_bridge(
+        parent_origin=_setting("AGENT_HOME_PARENT_ORIGIN"),
+        deployment_environment=(
+            _setting("AGENT_HOME_DEPLOYMENT_ENVIRONMENT") or "production"
+        ),
+        ack_request_id=st.session_state.get(
+            "_agent_home_first_prompt_ack_request_id"
+        ),
+        ack_status=st.session_state.get("_agent_home_first_prompt_ack_status"),
+    )
+except prompt_bridge.PromptBridgeConfigurationError:
+    bridge_value = None
+    st.error("Agent Home 연결 설정을 확인해 주세요.")
+
+if _claim_agent_home_first_prompt(bridge_value):
+    st.rerun()
+
+pending_first_prompt = st.session_state.pop(
+    "_agent_home_first_prompt_pending",
+    None,
+)
+if isinstance(pending_first_prompt, dict):
+    pending_prompt = pending_first_prompt.get("prompt")
+    if isinstance(pending_prompt, str):
+        _handle_chat_prompt(pending_prompt)
+    st.rerun()
+
 for chat_message in st.session_state["chat_messages"]:
     _render_message(chat_message)
 
@@ -1159,43 +1262,5 @@ if stage != "complete" and input_mode == "메자닌 평가":
 
 prompt = st.chat_input("질문을 입력해 주세요.")
 if prompt:
-    history = safe_chat_history(st.session_state["chat_messages"])
-    _append_message("user", prompt)
-    st.session_state["_chat_force_follow_after_submit"] = True
-    current_evaluation = st.session_state.get("current_evaluation")
-    has_current_evaluation = isinstance(current_evaluation, dict)
-    local_decision = route_chat_message(
-        prompt,
-        has_current_evaluation=has_current_evaluation,
-    )
-    explicit_request_check = getattr(
-        chat_router,
-        "is_explicit_evaluation_request",
-        None,
-    )
-    if callable(explicit_request_check):
-        is_explicit_request = bool(explicit_request_check(prompt))
-    else:
-        is_explicit_request = local_decision.route == ChatRoute.TYPE_B_EVALUATION
-
-    if is_explicit_request:
-        decision = local_decision
-    else:
-        decision = _resolve_chat_route(
-            prompt,
-            has_current_evaluation=has_current_evaluation,
-        )
-
-    if decision.route == ChatRoute.TYPE_D_BLOCKED:
-        st.session_state["panel_mode"] = None
-        _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
-    elif decision.route == ChatRoute.TYPE_B_EVALUATION:
-        st.session_state["panel_mode"] = "메자닌 평가"
-        if st.session_state.get("chat_stage") == "complete":
-            st.session_state["chat_stage"] = "collecting"
-        _append_message("assistant", EVALUATION_FORM_RESPONSE)
-    else:
-        st.session_state["panel_mode"] = None
-        _run_chatbase_query(prompt, route=decision.route, history=history)
-
+    _handle_chat_prompt(prompt)
     st.rerun()

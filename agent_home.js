@@ -13,6 +13,127 @@
         ALLOWED_ROUTES.has(route) ? route : "overview"
     );
 
+    const initializeFirstPrompt = () => {
+        const contract = window.EoswosFirstPromptContract;
+        const form = document.getElementById("agent-home-first-prompt-form");
+        const input = document.getElementById("agent-home-first-prompt-input");
+        const submitButton = document.getElementById("agent-home-first-prompt-submit");
+        const status = document.getElementById("agent-home-first-prompt-status");
+        if (!contract || !form || !input || !submitButton || !status) {
+            return;
+        }
+
+        let compositionActive = false;
+        let locked = false;
+
+        const setStatus = (message, isError = false) => {
+            status.textContent = message;
+            status.classList.toggle("is-error", isError);
+        };
+
+        const lockInput = (message) => {
+            locked = true;
+            input.value = "";
+            input.disabled = true;
+            submitButton.disabled = true;
+            form.setAttribute("aria-disabled", "true");
+            setStatus(message);
+        };
+
+        const persistUse = (requestId) => {
+            try {
+                contract.writeTabState(window.sessionStorage, requestId);
+                return true;
+            } catch (error) {
+                lockInput("브라우저 탭 상태를 보호할 수 없어 최초 질문 기능을 사용할 수 없습니다. AI 패널에서 질문해 주세요.");
+                return false;
+            }
+        };
+
+        const initialState = contract.readTabState(window.sessionStorage);
+        if (!initialState.available || initialState.used) {
+            lockInput("이 탭의 최초 질문 기능은 종료되었습니다. 이후 대화는 AI 패널에서 계속해 주세요.");
+        }
+
+        const submitFirstPrompt = () => {
+            if (locked) {
+                return;
+            }
+            const normalized = contract.normalizePrompt(input.value);
+            if (!normalized.ok) {
+                setStatus(
+                    normalized.code === "PROMPT_TOO_LONG"
+                        ? "질문은 500자 이하로 입력해 주세요."
+                        : "질문을 입력해 주세요.",
+                    true,
+                );
+                input.focus();
+                return;
+            }
+
+            let requestId;
+            try {
+                requestId = contract.createRequestId(window.crypto);
+            } catch (error) {
+                lockInput("안전한 요청 식별자를 만들 수 없습니다. AI 패널에서 질문해 주세요.");
+                return;
+            }
+            if (!persistUse(requestId)) {
+                return;
+            }
+
+            const prompt = normalized.prompt;
+            lockInput("질문을 AI 패널로 전달했습니다. 이후 대화는 AI 패널에서 계속해 주세요.");
+            const widget = window.EoswosAiWidget;
+            if (!widget || typeof widget.openForInitialPrompt !== "function") {
+                setStatus("AI 패널 연결을 준비하지 못했습니다. 열린 AI 패널에서 질문해 주세요.", true);
+                return;
+            }
+            widget.openForInitialPrompt({
+                requestId: requestId,
+                prompt: prompt,
+            });
+        };
+
+        input.addEventListener("compositionstart", () => {
+            compositionActive = true;
+        });
+        input.addEventListener("compositionend", () => {
+            compositionActive = false;
+        });
+        input.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") {
+                return;
+            }
+            event.preventDefault();
+            if (contract.shouldSubmitEnter(event, compositionActive)) {
+                submitFirstPrompt();
+            }
+        });
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            if (compositionActive) {
+                return;
+            }
+            submitFirstPrompt();
+        });
+
+        document.addEventListener("eoswos:ai-panel-opened", (event) => {
+            if (locked || event.detail?.reason !== "manual") {
+                return;
+            }
+            if (persistUse(null)) {
+                lockInput("AI 패널이 열렸습니다. 이후 질문은 AI 패널에서 입력해 주세요.");
+            }
+        });
+
+        document.addEventListener("eoswos:initial-prompt-delivery-failed", () => {
+            if (locked) {
+                setStatus("질문 전달 확인이 지연되고 있습니다. 열린 AI 패널에서 질문을 입력해 주세요.", true);
+            }
+        });
+    };
+
     const renderIcons = () => {
         if (window.lucide && typeof window.lucide.createIcons === "function") {
             window.lucide.createIcons({
@@ -132,6 +253,7 @@
 
     const initialize = () => {
         renderIcons();
+        initializeFirstPrompt();
         initializeAgentHome();
     };
 

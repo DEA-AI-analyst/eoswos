@@ -180,6 +180,113 @@
     letter-spacing: 0;
 }
 
+.agent-home__first-prompt {
+    width: min(820px, 100%);
+    margin: -10px auto 34px;
+    padding: 18px;
+    background: var(--agent-surface);
+    border: 1px solid #c8d9ee;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(23, 49, 82, 0.09);
+}
+
+.agent-home__first-prompt label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--agent-navy);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.agent-home__first-prompt-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.agent-home__first-prompt input {
+    min-width: 0;
+    height: 50px;
+    padding: 0 16px;
+    color: var(--agent-ink);
+    font: 500 15px/1.4 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
+    background: #f9fbfe;
+    border: 1px solid #b8cce5;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.agent-home__first-prompt input:focus {
+    background: #ffffff;
+    border-color: var(--agent-blue);
+    box-shadow: 0 0 0 3px rgba(23, 104, 213, 0.13);
+}
+
+.agent-home__first-prompt input:disabled {
+    color: #78869a;
+    background: #eef2f7;
+    border-color: #d4dce7;
+    cursor: not-allowed;
+}
+
+.agent-home__first-prompt button {
+    display: inline-flex;
+    min-width: 112px;
+    height: 50px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 17px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 750;
+    background: var(--agent-blue);
+    border: 1px solid #0f5fca;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.agent-home__first-prompt button:hover,
+.agent-home__first-prompt button:focus-visible {
+    background: #125bbd;
+    box-shadow: 0 7px 18px rgba(23, 104, 213, 0.2);
+    outline: none;
+}
+
+.agent-home__first-prompt button:disabled {
+    color: #e7edf5;
+    background: #8d9caf;
+    border-color: #8d9caf;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.agent-home__first-prompt button svg {
+    width: 17px;
+    height: 17px;
+}
+
+.agent-home__first-prompt-help,
+.agent-home__first-prompt-status {
+    margin: 9px 2px 0;
+    color: var(--agent-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.agent-home__first-prompt-status {
+    min-height: 17px;
+    color: #175da9;
+    font-weight: 700;
+}
+
+.agent-home__first-prompt-status.is-error {
+    color: #a33a31;
+}
+
 .agent-home__section + .agent-home__section {
     margin-top: 38px;
 }
@@ -635,6 +742,47 @@ body.agent-home-active .site-hit-counter {
     .agent-home__intro p {
         margin-top: 13px;
         font-size: 20px;
+    }
+
+    .agent-home__first-prompt {
+        margin: 0 auto 26px;
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    .agent-home__first-prompt-control {
+        grid-template-columns: minmax(0, 1fr) 48px;
+        gap: 8px;
+    }
+
+    .agent-home__first-prompt input {
+        height: 48px;
+        padding: 0 13px;
+        font-size: 14px;
+    }
+
+    .agent-home__first-prompt button {
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        padding: 0;
+    }
+
+    .agent-home__first-prompt button span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .agent-home__first-prompt-help,
+    .agent-home__first-prompt-status {
+        font-size: 10px;
     }
 
     .agent-home__section-heading > span:last-child:not(:first-child) {

@@ -9,6 +9,7 @@
     const MIN_PANEL_HEIGHT = 420;
     const PANEL_HORIZONTAL_GAP = 32;
     const PANEL_VERTICAL_GAP = 160;
+    const promptContract = window.EoswosFirstPromptContract;
 
     const panel = document.createElement("section");
     panel.id = "ai-evaluation-panel";
@@ -65,6 +66,43 @@
     const resizeHandles = panel.querySelectorAll(".ai-panel-resize-handle");
     let preferredPanelSize = readPreferredPanelSize();
     let activeResize = null;
+    let bridgeSource = null;
+
+    const childOrigin = (() => {
+        try {
+            return new URL(frame.dataset.src, window.location.href).origin;
+        } catch (error) {
+            return "";
+        }
+    })();
+
+    const deliveryController = promptContract && childOrigin
+        ? promptContract.createDeliveryController({
+            send: function (target, payload) {
+                target.postMessage(payload, childOrigin);
+            },
+            schedule: function (callback, delay) {
+                return window.setTimeout(callback, delay);
+            },
+            cancel: function (timerId) {
+                window.clearTimeout(timerId);
+            },
+            timeoutMs: promptContract.ACK_TIMEOUT_MS,
+            readyTimeoutMs: promptContract.READY_TIMEOUT_MS,
+            onAck: function (requestId) {
+                refreshButton.disabled = false;
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-ack", {
+                    detail: { requestId: requestId },
+                }));
+            },
+            onFailure: function (requestId) {
+                refreshButton.disabled = false;
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: requestId },
+                }));
+            },
+        })
+        : null;
 
     function readPreferredPanelSize() {
         try {
@@ -208,6 +246,9 @@
     });
 
     function loadFrame(forceRefresh) {
+        if (forceRefresh && deliveryController?.hasPending()) {
+            return false;
+        }
         let source = frame.dataset.src;
 
         if (forceRefresh) {
@@ -218,10 +259,14 @@
         loading.hidden = false;
         panel.setAttribute("aria-busy", "true");
         refreshButton.classList.add("is-loading");
+        bridgeSource = null;
+        deliveryController?.markNotReady();
         frame.src = source;
+        return true;
     }
 
-    function setPanelOpen(open) {
+    function setPanelOpen(open, reason) {
+        const wasOpen = launcher.getAttribute("aria-expanded") === "true";
         launcher.setAttribute("aria-expanded", String(open));
         launcher.setAttribute("aria-label", open ? "AI Agent 닫기" : "AI Agent 열기");
         panel.setAttribute("aria-hidden", String(!open));
@@ -230,10 +275,16 @@
         if (open && !frame.getAttribute("src")) {
             loadFrame(false);
         }
+        if (open && !wasOpen) {
+            document.dispatchEvent(new CustomEvent("eoswos:ai-panel-opened", {
+                detail: { reason: reason || "programmatic" },
+            }));
+        }
     }
 
     launcher.addEventListener("click", function () {
-        setPanelOpen(launcher.getAttribute("aria-expanded") !== "true");
+        const shouldOpen = launcher.getAttribute("aria-expanded") !== "true";
+        setPanelOpen(shouldOpen, shouldOpen ? "manual" : "manual_close");
     });
 
     closeButton.addEventListener("click", function () {
@@ -246,6 +297,8 @@
     });
 
     frame.addEventListener("load", function () {
+        bridgeSource = null;
+        deliveryController?.markNotReady();
         loading.hidden = true;
         panel.setAttribute("aria-busy", "false");
         refreshButton.classList.remove("is-loading");
@@ -256,5 +309,72 @@
             setPanelOpen(false);
             launcher.focus();
         }
+    });
+
+    function isExpectedBridgeSource(source) {
+        if (!source) {
+            return false;
+        }
+        try {
+            return source.parent === frame.contentWindow && source.top === window;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    window.addEventListener("message", function (event) {
+        if (!promptContract || !deliveryController || event.origin !== childOrigin) {
+            return;
+        }
+        if (promptContract.isReadyMessage(event.data)) {
+            if (!isExpectedBridgeSource(event.source)) {
+                return;
+            }
+            bridgeSource = event.source;
+            deliveryController.markReady(bridgeSource);
+            return;
+        }
+        if (!bridgeSource || event.source !== bridgeSource) {
+            return;
+        }
+        const pendingRequestId = event.data?.request_id;
+        if (promptContract.isAckMessage(event.data, pendingRequestId)) {
+            deliveryController.acknowledge(pendingRequestId);
+        }
+    });
+
+    window.EoswosAiWidget = Object.freeze({
+        openPanel: function () {
+            setPanelOpen(true, "programmatic");
+        },
+        openForInitialPrompt: function (request) {
+            if (!promptContract || !deliveryController) {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request?.requestId || null },
+                }));
+                setPanelOpen(true, "initial_prompt");
+                return false;
+            }
+            const normalized = promptContract.normalizePrompt(request?.prompt);
+            if (!normalized.ok || typeof request?.requestId !== "string") {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request?.requestId || null },
+                }));
+                return false;
+            }
+            const envelope = promptContract.createInitialPromptEnvelope(
+                request.requestId,
+                normalized.prompt,
+            );
+            if (!deliveryController.queue(envelope)) {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request.requestId },
+                }));
+                return false;
+            }
+            refreshButton.disabled = true;
+            setPanelOpen(true, "initial_prompt");
+            return true;
+        },
     });
 }());
