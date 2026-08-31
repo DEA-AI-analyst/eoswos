@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from datetime import datetime
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
@@ -27,6 +28,7 @@ from chatbase_client import ChatbaseClient, ChatbaseError
 
 
 REPORT_FAILURE_MESSAGE = "AI 평가보고서 생성에 실패했습니다."
+LOGGER = logging.getLogger(__name__)
 
 
 def ensure_report_session() -> None:
@@ -98,7 +100,9 @@ def generate_ai_report(*, api_key: str, agent_id: str, model_mode: str | None) -
         st.session_state["ai_report_reviewer_editor"] = state["reviewer_comment"]
         st.session_state["ai_report_error"] = None
         return True
-    except Exception:
+    except Exception as exc:
+        error_code = str(getattr(exc, "code", type(exc).__name__))[:64]
+        LOGGER.warning("AI report generation failed (code=%s)", error_code)
         protected, changed = protect_evaluation_state(
             current,
             st.session_state.get("current_evaluation"),

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import pytest
 
 from ai_evaluation_report import (
+    AI_REPORT_GENERATION_REQUEST,
     build_ai_report_generation_context,
     build_canonical_report_context,
     is_ai_report_request,
@@ -157,6 +158,9 @@ def test_generation_context_limits_ai_to_narrative() -> None:
     assert context["facts"] == canonical
     assert context["response_contract"]["output"] == "AI 평가의견 본문만"
     assert "새 수치 또는 등급 생성" in context["response_contract"]["forbidden"]
+    assert "확정 정량값 또는 등급의 본문 반복" in context["response_contract"]["forbidden"]
+    assert "M Score" in AI_REPORT_GENERATION_REQUEST
+    assert "직접 반복하지 말고" in AI_REPORT_GENERATION_REQUEST
 
 
 def test_quantitative_parity_accepts_confirmed_values_and_rejects_drift() -> None:
