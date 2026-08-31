@@ -1,4 +1,5 @@
 import copy
+from pathlib import Path
 
 import pytest
 
@@ -7,7 +8,7 @@ from ai_evaluation_report_ui import (
     _build_price_basis_detail_rows,
     _display_number,
     _display_rank,
-    _style_report_table,
+    _report_table_html,
 )
 from test_streamlit_chat_routing import _app, _provenance_result, _show_result
 
@@ -56,22 +57,21 @@ def _show_confirmed(at, result: dict):
 
 
 def test_report_key_result_display_matches_evaluation_card_precision() -> None:
+    assert _display_number(74.05451, 0) == "74"
     assert _display_number(74.05451, 3) == "74.055"
     assert _display_number(1.478863, 6) == "1.478863"
     assert _display_rank(1261) == "1,261"
 
+
 def test_report_table_alignment_and_axis_score_precision() -> None:
-    axes = _style_report_table(
+    axes = _report_table_html(
         [{"축": "e_M", "역할": "구조적 효율성", "Grade": "E1", "Score": "0.900", "Rank": "396"}],
-        centered_columns=("축", "Grade"),
+        centered_columns=("축", "Grade", "Score", "Rank"),
     )
-    assert axes.table_styles == [
-        {"selector": "th", "props": [("text-align", "center")]}
-    ]
-    axes._compute()
-    assert ("text-align", "center") in axes.ctx[(0, 0)]
-    assert ("text-align", "center") in axes.ctx[(0, 2)]
-    assert ("text-align", "center") not in axes.ctx[(0, 1)]
+    assert axes.count('<th scope="col" style="text-align:center">') == 5
+    for value in ("e_M", "E1", "0.900", "396"):
+        assert f'<td style="text-align:center">{value}</td>' in axes
+    assert '<td style="text-align:left">구조적 효율성</td>' in axes
     assert _display_number(0.9, 3) == "0.900"
 
     details = _build_price_basis_detail_rows(
@@ -95,19 +95,33 @@ def test_report_table_alignment_and_axis_score_precision() -> None:
     assert all(row["가격"] == "10,850" for row in details)
     assert all(row["M Score"] == "74" for row in details)
     assert all(row["Final Score"] == "1.478863" for row in details)
-    detail_style = _style_report_table(details, center_all=True)
-    detail_style._compute()
-    assert all(
-        ("text-align", "center") in detail_style.ctx[(0, column)]
-        for column in range(len(details[0]))
-    )
-    price = _style_report_table(
+    detail_html = _report_table_html(details, center_all=True)
+    assert "eoswos-data-table--wide" in detail_html
+    assert "text-align:left" not in detail_html
+    assert detail_html.count('<td style="text-align:center">') == len(details) * len(details[0])
+
+    price_html = _report_table_html(
         [{"가격기준": "1D", "M Grade": "M1", "e_M": "E1", "p_M": "P2", "s_M": "S1"}],
         center_all=True,
     )
-    price._compute()
-    assert all(("text-align", "center") in price.ctx[(0, column)] for column in range(5))
+    assert "text-align:left" not in price_html
+    assert price_html.count('<td style="text-align:center">') == 5
 
+    overview_html = _report_table_html([{"항목": "회사", "값": "현대건설"}])
+    assert overview_html.count('<th scope="col" style="text-align:center">') == 2
+    assert '<td style="text-align:left">회사</td>' in overview_html
+    assert '<td style="text-align:left">현대건설</td>' in overview_html
+
+    escaped = _report_table_html([{"항목": "안전", "값": "<script>alert(1)</script>"}])
+    assert "<script>" not in escaped
+    assert "&lt;script&gt;" in escaped
+
+
+def test_chat_input_width_tracks_report_width() -> None:
+    source = Path("ai_single_evaluation.py").read_text(encoding="utf-8")
+    assert '[data-testid="stBottomBlockContainer"]' in source
+    assert "max-width: 720px !important" in source
+    assert "max-width: 794px !important" in source
 def test_report_button_generates_dedicated_editable_draft(monkeypatch) -> None:
     at, calls = _app(monkeypatch)
     confirmed = _confirmed_result()

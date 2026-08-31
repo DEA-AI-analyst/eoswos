@@ -16,7 +16,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from ai_evaluation_report_ui import (
     _build_price_basis_detail_rows,
-    _style_report_table,
+    _render_report_table,
     clear_report_session,
     ensure_report_session,
     generate_ai_report,
@@ -380,9 +380,59 @@ st.markdown(
             font-size: 0.82rem;
             line-height: 1.55;
         }
+        .eoswos-table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #e2e7ef;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+        .eoswos-data-table {
+            width: 100%;
+
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .eoswos-data-table--wide {
+            min-width: 720px;
+        }
+        .eoswos-data-table--wide th,
+        .eoswos-data-table--wide td {
+            white-space: nowrap;
+        }
+        .eoswos-data-table th,
+        .eoswos-data-table td {
+            padding: 0.5rem 0.55rem;
+            border-right: 1px solid #e2e7ef;
+            border-bottom: 1px solid #e2e7ef;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+        .eoswos-data-table th {
+            color: #667085;
+            background: #f8fafc;
+            font-weight: 500;
+        }
+        .eoswos-data-table th:last-child,
+        .eoswos-data-table td:last-child {
+            border-right: 0;
+        }
+        .eoswos-data-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+        [data-testid="stBottomBlockContainer"] {
+            width: 100% !important;
+            max-width: 720px !important;
+            margin-right: auto !important;
+            margin-left: auto !important;
+            padding-right: 0 !important;
+            padding-left: 0 !important;
+            box-sizing: border-box;
+        }
         @media (min-width: 900px) {
-            .block-container {
-                max-width: 794px;
+            .block-container,
+            [data-testid="stBottomBlockContainer"] {
+                max-width: 794px !important;
             }
         }
         @media (max-width: 520px) {
@@ -390,6 +440,10 @@ st.markdown(
                 padding-top: 0.55rem;
                 padding-right: 0.65rem;
                 padding-left: 0.65rem;
+            }
+            [data-testid="stBottomBlockContainer"] {
+                padding-right: 0.65rem !important;
+                padding-left: 0.65rem !important;
             }
             .chat-title strong { font-size: 1.2rem; }
         }
@@ -467,7 +521,7 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         <div class="result-summary">
             <div class="grade"><span>M Grade</span><strong>{_escape(result.get('m_grade'))}</strong></div>
             <div><span>선택 가격기준</span><strong>{_escape(selected_basis)}</strong></div>
-            <div><span>M Score</span><strong>{_escape(_format_number(result.get('m_score'), 3))}</strong></div>
+            <div><span>M Score</span><strong>{_escape(_format_number(result.get('m_score'), 0))}</strong></div>
             <div><span>M Rank</span><strong>{_escape(_format_rank(result.get('final_rank')))}</strong></div>
             <div><span>Final Score</span><strong>{_escape(_format_number(result.get('final_score'), 6))}</strong></div>
             <div><span>가격</span><strong>{_escape(_format_number(selected.get('price'), 0))}</strong></div>
@@ -486,11 +540,7 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
     rows = _build_price_basis_detail_rows(price_basis)
 
     with st.expander("1D · 1W · 1M 세부 결과"):
-        st.dataframe(
-            _style_report_table(rows, center_all=True),
-            hide_index=True,
-            width="stretch",
-        )
+        _render_report_table(rows, center_all=True)
 
     with st.expander("상세 출처 보기"):
         st.write(f"요청 ID: `{result.get('request_id', '-')}`")

@@ -159,7 +159,7 @@ def _add_key_results(document: Document, context: Mapping[str, Any]) -> None:
     headers = ("M Grade", "M Score", "M Rank", "Final Score")
     values = (
         result.get("m_grade"),
-        _number(result.get("m_score"), 3),
+        _number(result.get("m_score"), 0),
         _rank(result.get("m_rank")),
         _number(result.get("final_score"), 6),
     )

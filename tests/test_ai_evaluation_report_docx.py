@@ -49,7 +49,7 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "AI Evaluation Report",
         "신규평가",
         "M4",
-        "34.133",
+        "34",
         "1,261",
         "0.681641",
         "DART 재무정보 + 검증된 KRX 상장주식수",
@@ -59,6 +59,13 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         "개별 성공확률이나 투자승인·부결을 의미하지 않습니다",
     ):
         assert expected in text
+    key_results = next(
+        table
+        for table in document.tables
+        if [cell.text for cell in table.rows[0].cells]
+        == ["M Grade", "M Score", "M Rank", "Final Score"]
+    )
+    assert key_results.cell(1, 1).text == "34"
     assert "EOSWOS" not in text
     for run in _body_runs(document):
         if not run.text:

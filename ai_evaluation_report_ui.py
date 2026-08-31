@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import copy
+import html
 import logging
 from datetime import datetime
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 import streamlit as st
 
 from ai_evaluation_report import (
@@ -231,7 +231,7 @@ def _render_overview(context: Mapping[str, Any]) -> None:
     ):
         if key in monitoring:
             rows.append({"항목": label, "값": monitoring[key]})
-    st.dataframe(rows, hide_index=True, width="stretch")
+    _render_report_table(rows)
 
 
 def _render_key_results(context: Mapping[str, Any]) -> None:
@@ -240,7 +240,7 @@ def _render_key_results(context: Mapping[str, Any]) -> None:
     columns = st.columns(4)
     metrics = (
         ("M Grade", _display(result.get("m_grade"))),
-        ("M Score", _display_number(result.get("m_score"), 3)),
+        ("M Score", _display_number(result.get("m_score"), 0)),
         ("M Rank", _display_rank(result.get("m_rank"))),
         ("Final Score", _display_number(result.get("final_score"), 6)),
     )
@@ -267,7 +267,7 @@ def _render_axes(context: Mapping[str, Any]) -> None:
                 "Rank": _display_rank(axis.get("rank")),
             }
         )
-    st.dataframe(_style_report_table(rows, centered_columns=("축", "Grade")), hide_index=True, width="stretch")
+    _render_report_table(rows, centered_columns=("축", "Grade", "Score", "Rank"))
 
 
 def _render_price_basis(context: Mapping[str, Any]) -> None:
@@ -286,7 +286,7 @@ def _render_price_basis(context: Mapping[str, Any]) -> None:
                 "s_M": _mapping(item.get("s_M")).get("grade", "-"),
             }
         )
-    st.dataframe(_style_report_table(rows, center_all=True), hide_index=True, width="stretch")
+    _render_report_table(rows, center_all=True)
 
 
 def _render_provenance(context: Mapping[str, Any]) -> None:
@@ -303,7 +303,7 @@ def _render_provenance(context: Mapping[str, Any]) -> None:
     ]
     if provenance.get("source_note"):
         rows.append({"항목": "Source Note", "값": provenance["source_note"]})
-    st.dataframe(rows, hide_index=True, width="stretch")
+    _render_report_table(rows)
 
 
 def _build_price_basis_detail_rows(price_basis: Any) -> list[dict[str, str]]:
@@ -332,23 +332,53 @@ def _build_price_basis_detail_rows(price_basis: Any) -> list[dict[str, str]]:
     return rows
 
 
-def _style_report_table(
+def _report_table_html(
     rows: list[dict[str, Any]],
     *,
     centered_columns: tuple[str, ...] = (),
     center_all: bool = False,
-):
-    frame = pd.DataFrame(rows)
-    styled = frame.style.set_table_styles(
-        [{"selector": "th", "props": [("text-align", "center")]}]
+) -> str:
+    if not rows:
+        return '<div class="eoswos-table-empty">표시할 결과가 없습니다.</div>'
+    columns = list(rows[0].keys())
+    table_class = "eoswos-data-table"
+    if len(columns) > 5:
+        table_class += " eoswos-data-table--wide"
+    header = "".join(
+        f'<th scope="col" style="text-align:center">{html.escape(str(column))}</th>'
+        for column in columns
     )
-    columns = list(frame.columns) if center_all else [
-        column for column in centered_columns if column in frame.columns
-    ]
-    if columns:
-        styled = styled.set_properties(subset=columns, **{"text-align": "center"})
-    return styled
+    body_rows = []
+    for row in rows:
+        cells = []
+        for column in columns:
+            alignment = "center" if center_all or column in centered_columns else "left"
+            value = html.escape(str(row.get(column, "-")))
+            cells.append(f'<td style="text-align:{alignment}">{value}</td>')
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+    return (
+        '<div class="eoswos-table-scroll">'
+        f'<table class="{table_class}">'
+        f"<thead><tr>{header}</tr></thead>"
+        f"<tbody>{''.join(body_rows)}</tbody>"
+        "</table></div>"
+    )
 
+
+def _render_report_table(
+    rows: list[dict[str, Any]],
+    *,
+    centered_columns: tuple[str, ...] = (),
+    center_all: bool = False,
+) -> None:
+    st.markdown(
+        _report_table_html(
+            rows,
+            centered_columns=centered_columns,
+            center_all=center_all,
+        ),
+        unsafe_allow_html=True,
+    )
 
 def _mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
