@@ -205,6 +205,33 @@ def test_quantitative_drift_fails_report_only_and_preserves_result(monkeypatch) 
     assert any("AI 평가보고서 생성에 실패했습니다" in item.value for item in at.error)
 
 
+def test_ungrounded_first_draft_is_rewritten_once(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    confirmed = _confirmed_result()
+    _show_confirmed(at, confirmed)
+    responses = iter(
+        (
+            "행사개시일 당일 도달 특성이 나타납니다.",
+            "확정 결과의 상대적 강점과 제한축을 함께 검토해야 합니다.",
+        )
+    )
+    call_count = {"value": 0}
+
+    def answer(*_args, **_kwargs):
+        call_count["value"] += 1
+        return ChatbaseCallResult(text=next(responses), elapsed_ms=1.0)
+
+    monkeypatch.setattr("chatbase_client.ChatbaseClient.ask", answer)
+    next(button for button in at.button if button.label == "AI 평가보고서").click().run(timeout=10)
+
+    assert not at.exception
+    assert call_count["value"] == 2
+    assert at.session_state["current_evaluation"] == confirmed
+    assert at.session_state["ai_report_state"]["ai_draft"] == (
+        "확정 결과의 상대적 강점과 제한축을 함께 검토해야 합니다."
+    )
+    assert not at.error
+
 def test_ungrounded_timing_claim_fails_report_only_and_preserves_result(monkeypatch) -> None:
     at, _ = _app(monkeypatch)
     confirmed = _confirmed_result()

@@ -44,6 +44,13 @@ AI_REPORT_GENERATION_REQUEST = (
     "날짜 또는 경과기간으로 바꾸어 쓰지 마세요."
 )
 
+AI_REPORT_GROUNDING_RETRY_REQUEST = (
+    "AI 평가의견을 다시 작성하세요. 이전 답변을 인용하거나 수정 사유를 설명하지 마세요. "
+    "timing_point, 실제 사건 시점, 날짜 및 경과기간은 언급하지 마세요. "
+    "확정 정량값과 등급을 반복하지 않고 제공된 사실의 질적 해석만 사용하여 "
+    "5~7개의 짧은 존댓말 문장으로 작성하세요. 투자추천·승인·부결 의견은 작성하지 마세요."
+)
+
 _MONITORING_ALIASES = {
     "actual_issue_date": ("actual_issue_date", "Actual_Issue_Date", "Actual Issue Date"),
     "monitoring_date": ("monitoring_date", "Monitoring_Date", "Monitoring Date"),

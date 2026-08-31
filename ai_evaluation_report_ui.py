@@ -13,6 +13,7 @@ import streamlit as st
 
 from ai_evaluation_report import (
     AI_REPORT_GENERATION_REQUEST,
+    AI_REPORT_GROUNDING_RETRY_REQUEST,
     build_ai_report_generation_context,
     build_canonical_report_context,
     new_report_state,
@@ -92,10 +93,29 @@ def generate_ai_report(*, api_key: str, agent_id: str, model_mode: str | None) -
             )
         grounding_errors = validate_generated_grounding(response.text, canonical)
         if grounding_errors:
-            raise ChatbaseError(
-                "AI 평가의견의 도달시점 근거를 확인하지 못했습니다.",
-                code="REPORT_GROUNDING_ERROR",
+            with st.spinner("AI 평가의견의 근거를 다시 확인 중입니다."):
+                response = client.ask(
+                    AI_REPORT_GROUNDING_RETRY_REQUEST,
+                    history=(),
+                    evaluation_context=build_ai_report_generation_context(canonical),
+                )
+            protected, changed = protect_evaluation_state(
+                current,
+                st.session_state.get("current_evaluation"),
             )
+            if changed:
+                st.session_state["current_evaluation"] = protected
+                raise ChatbaseError(
+                    "확정 평가결과 상태를 보호하기 위해 보고서 생성을 중단했습니다.",
+                    code="STATE_INTEGRITY_ERROR",
+                )
+            parity_errors = validate_generated_quantitative_parity(response.text, canonical)
+            grounding_errors = validate_generated_grounding(response.text, canonical)
+            if parity_errors or grounding_errors:
+                raise ChatbaseError(
+                    "AI 평가의견의 근거를 확인하지 못했습니다.",
+                    code="REPORT_GROUNDING_ERROR",
+                )
         fingerprint = report_source_fingerprint(current, submitted)
         state = new_report_state(
             canonical_context=canonical,
