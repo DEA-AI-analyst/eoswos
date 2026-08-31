@@ -132,6 +132,16 @@
     line-height: 1.2;
 }
 
+.agent-home__registration {
+    max-width: min(330px, 38vw);
+    margin-left: auto;
+    color: #c9d6e8;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: right;
+}
+
 .agent-home__main {
     width: min(1160px, calc(100% - 40px));
     margin: 0 auto;
@@ -432,13 +442,21 @@
 .agent-home__engine {
     display: flex;
     align-items: center;
-    gap: 13px;
+    justify-content: space-between;
+    gap: 20px;
     margin-top: 28px;
     padding: 17px 20px;
     color: #ffffff;
     background: var(--agent-navy);
     border: 1px solid #173c6d;
     border-radius: 8px;
+}
+
+.agent-home__engine-identity {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
 }
 
 .agent-home__engine-mark {
@@ -457,7 +475,7 @@
     height: 21px;
 }
 
-.agent-home__engine > span:last-child {
+.agent-home__engine-copy {
     display: flex;
     flex-direction: column;
 }
@@ -470,6 +488,15 @@
     margin-top: 4px;
     color: #b8c8dc;
     font-size: 12px;
+}
+
+.agent-home__engine .agent-home__engine-copyright {
+    flex: 0 0 auto;
+    margin-top: 0;
+    color: #d4deeb;
+    line-height: 1.35;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .agent-home-return {
@@ -540,6 +567,12 @@ body.agent-home-active .site-hit-counter {
     .agent-home__brand-divider,
     .agent-home__brand-subtitle {
         display: none;
+    }
+
+    .agent-home__registration {
+        max-width: 190px;
+        font-size: 10px;
+        line-height: 1.25;
     }
 
     .agent-home__main {
@@ -615,6 +648,8 @@ body.agent-home-active .site-hit-counter {
     }
 
     .agent-home__engine {
+        flex-wrap: wrap;
+        gap: 10px;
         padding: 14px;
     }
 
@@ -624,6 +659,12 @@ body.agent-home-active .site-hit-counter {
 
     .agent-home__engine small {
         font-size: 11px;
+    }
+
+    .agent-home__engine .agent-home__engine-copyright {
+        width: 100%;
+        font-size: 10px;
+        text-align: right;
     }
 
     .agent-home-return span {
