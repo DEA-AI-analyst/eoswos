@@ -511,8 +511,7 @@
     height: 48px;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    padding: 0 18px;
+    padding: 0 21px;
     color: #ffffff;
     font: 700 14px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
     background: #274f83;
@@ -535,12 +534,9 @@
 }
 
 .agent-home-return svg {
+    display: none;
     width: 18px;
     height: 18px;
-}
-
-.agent-home-return__label--compact {
-    display: none;
 }
 
 body.agent-home-active .site-copyright-registration,
@@ -552,17 +548,21 @@ body.agent-home-active .site-hit-counter {
     .agent-home-return {
         right: 12px;
         bottom: 124px;
-        min-width: 72px;
+        width: 52px;
+        min-width: 52px;
         height: 52px;
-        padding: 0 14px;
+        padding: 0;
+        border-radius: 50%;
     }
 
-    .agent-home-return__label--desktop {
+    .agent-home-return__label {
         display: none;
     }
 
-    .agent-home-return__label--compact {
-        display: inline;
+    .agent-home-return svg {
+        display: block;
+        width: 20px;
+        height: 20px;
     }
 }
 

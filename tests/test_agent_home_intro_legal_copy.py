@@ -31,20 +31,32 @@ def test_agent_home_legal_copy_has_desktop_and_mobile_layout_rules() -> None:
     assert "flex-wrap: wrap;" in css
 
 
-def test_agent_home_return_matches_ai_launcher_stack_and_compacts_label() -> None:
+def test_agent_home_return_matches_ai_launcher_and_uses_mobile_house_icon() -> None:
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     css = (ROOT / "agent_home.css").read_text(encoding="utf-8")
 
-    assert "agent-home-return__label--desktop" in html
+    assert 'aria-label="Agent Home으로 이동"' in html
+    assert 'class="agent-home-return__label"' in html
     assert ">Agent Home</span>" in html
-    assert "agent-home-return__label--compact" in html
-    assert ">Home</span>" in html
+    assert "agent-home-return__label--compact" not in html
     assert "right: 16px;" in css
     assert "bottom: 124px;" in css
     assert "min-width: 112px;" in css
+    assert "padding: 0 21px;" in css
     assert "border-radius: 999px;" in css
     assert (
         "@media (max-width: 768px), "
         "(hover: none) and (pointer: coarse) and (max-width: 1024px)"
     ) in css
-    assert ".agent-home-return__label--compact" in css
+    mobile_block = css.split(
+        "@media (max-width: 768px), (hover: none) and (pointer: coarse) and (max-width: 1024px)",
+        1,
+    )[1].split("@media", 1)[0]
+    assert "width: 52px;" in mobile_block
+    assert "min-width: 52px;" in mobile_block
+    assert "height: 52px;" in mobile_block
+    assert "border-radius: 50%;" in mobile_block
+    assert ".agent-home-return__label" in mobile_block
+    assert "display: none;" in mobile_block
+    assert ".agent-home-return svg" in mobile_block
+    assert "display: block;" in mobile_block
