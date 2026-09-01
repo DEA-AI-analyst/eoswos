@@ -168,12 +168,16 @@
             }
         }
 
-        function clearSensitivePending() {
+        function clearSensitivePending(options) {
+            const resetConnection = Boolean(options && options.resetConnection);
             if (pending && pending.envelope) {
                 pending.envelope.prompt = "";
             }
             pending = null;
-            bridgeSource = null;
+            if (resetConnection) {
+                ready = false;
+                bridgeSource = null;
+            }
             retryDue = false;
             clearTimer();
             clearReadyTimer();
@@ -181,7 +185,7 @@
 
         function failDelivery() {
             const requestId = pending ? pending.envelope.request_id : null;
-            clearSensitivePending();
+            clearSensitivePending({ resetConnection: true });
             onFailure(requestId);
         }
 

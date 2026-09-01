@@ -112,6 +112,19 @@ def _wait_for_evaluation_form(driver, prompt: str) -> None:
         and "prompt=" not in frame.get_attribute("src")
     )
     driver.switch_to.frame(frame)
+
+    def locate_streamlit_content(child):
+        if "EosWos AI Agent" in child.find_element(By.TAG_NAME, "body").text:
+            return "direct"
+        cloud_frames = child.find_elements(
+            By.CSS_SELECTOR,
+            'iframe[title="streamlitApp"]',
+        )
+        return cloud_frames[0] if cloud_frames else False
+
+    streamlit_content = WebDriverWait(driver, 90).until(locate_streamlit_content)
+    if streamlit_content != "direct":
+        driver.switch_to.frame(streamlit_content)
     WebDriverWait(driver, 90).until(
         lambda child: "EosWos AI Agent" in child.find_element(By.TAG_NAME, "body").text
     )
