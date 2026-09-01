@@ -444,6 +444,17 @@
     line-height: 1.55;
 }
 
+@media (min-width: 921px) {
+    .agent-home__primary-card {
+        min-height: 148px;
+        padding: 18px 22px;
+    }
+
+    .agent-home__card-copy > span {
+        margin-top: 10px;
+    }
+}
+
 .agent-home__card-arrow {
     display: grid;
     width: 36px;
