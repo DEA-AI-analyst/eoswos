@@ -56,6 +56,15 @@
 8. `main` 브랜치에 push하면 연결된 GitHub Pages와 Streamlit Cloud가 변경사항을 다시 배포합니다.
 9. Agent Home 질문은 AI 패널이 닫혀 있을 때마다 새 request ID와 함께 strict-origin `postMessage`로 전달되며, 패널이 열려 있는 동안의 대화는 기존 AI 패널에서 계속됩니다.
 
+## Agent Home 릴리스 메모
+
+다음 Production 릴리스에는 Agent Home 관련 변경을 함께 기록합니다.
+
+- `bf65596`: 반응형 Agent Home 복귀 버튼 개선
+- `ab80f52`: Home 버튼을 AI Agent 버튼 폭과 정렬
+- `b7f9589`: AI 패널이 닫혀 있을 때 Home 질문 입력을 다시 활성화하고, 패널이 열려 있는 동안만 입력 비활성화
+- `db3c413`: 첫 질문 ACK 이후에도 검증된 bridge 연결을 재사용하여 두 번째 질문을 즉시 전달
+
 ## 자연어 라우팅
 
 | 유형 | 처리 |
