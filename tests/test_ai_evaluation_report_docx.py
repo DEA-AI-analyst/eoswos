@@ -143,10 +143,27 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
         == ["가격기준", "M Grade", "e_M", "p_M", "s_M"]
     )
     assert _all_cells_centered(price)
+    legend = next(
+        paragraph
+        for paragraph in document.paragraphs
+        if paragraph.text == "축 열 표기: Grade | Score | Rank"
+    )
+    assert legend.alignment == WD_ALIGN_PARAGRAPH.RIGHT
     price_grid_widths = [int(column.get(qn("w:w"))) for column in price._tbl.tblGrid]
-    assert price_grid_widths == [1100, 1500, 2761, 2761, 2761]
-    assert sum(price_grid_widths) <= 10885
-    assert len(set(price_grid_widths[2:])) == 1
+    assert price_grid_widths == [1200, 1700, 2726, 2726, 2728]
+    assert sum(price_grid_widths) == 11080
+    assert max(price_grid_widths[2:]) - min(price_grid_widths[2:]) <= 2
+    table_width = price._tbl.tblPr.find(qn("w:tblW"))
+    assert table_width is not None
+    assert table_width.get(qn("w:type")) == "dxa"
+    assert int(table_width.get(qn("w:w"))) == 11080
+    layout = price._tbl.tblPr.find(qn("w:tblLayout"))
+    assert layout is not None
+    assert layout.get(qn("w:type")) == "fixed"
+    assert price.autofit is False
+    for row in price.rows:
+        row_widths = [int(cell._tc.tcPr.tcW.get(qn("w:w"))) for cell in row.cells]
+        assert row_widths == price_grid_widths
 
     review = document.tables[-1]
     assert len(review.rows) == 1 and len(review.columns) == 1

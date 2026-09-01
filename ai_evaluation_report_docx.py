@@ -292,10 +292,11 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
     rows = context.get("price_basis_results")
     rows = rows if isinstance(rows, Sequence) and not isinstance(rows, (str, bytes)) else []
     legend = document.add_paragraph()
+    legend.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     legend.paragraph_format.space_before = Pt(0)
     legend.paragraph_format.space_after = Pt(0.8)
     _run(legend, "축 열 표기: Grade | Score | Rank", size=BODY_FONT_SIZE, color=MID_GRAY)
-    widths = (1100, 1500, 2761, 2761, 2761)
+    widths = (1200, 1700, 2726, 2726, 2728)
     table = document.add_table(rows=1, cols=5)
     _configure_table(table, widths)
     for index, label in enumerate(("가격기준", "M Grade", "e_M", "p_M", "s_M")):
