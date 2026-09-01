@@ -320,7 +320,7 @@ def test_ime_guard_length_limit_and_mobile_panel_layout(driver) -> None:
     assert "500자 이하" in driver.find_element(
         By.ID,
         "agent-home-first-prompt-status",
-    ).text
+    ).get_attribute("textContent")
 
     driver.execute_script("arguments[0].value = '평가.';", prompt_input)
     driver.find_element(By.ID, "agent-home-first-prompt-submit").click()
