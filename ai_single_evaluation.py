@@ -100,6 +100,9 @@ st.set_page_config(
 
 APP_DIR = Path(__file__).resolve().parent
 CODE_PATH = APP_DIR / "code.xlsx"
+AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT = 64
+AGENT_HOME_CONSUMED_REQUEST_IDS_KEY = "_agent_home_prompt_consumed_request_ids"
+AGENT_HOME_LEGACY_REQUEST_ID_KEY = "_agent_home_first_prompt_request_id"
 
 
 @st.cache_data(show_spinner=False)
@@ -576,6 +579,31 @@ def _initial_messages() -> list[dict[str, Any]]:
     ]
 
 
+def _ensure_agent_home_consumed_request_ids() -> list[str]:
+    """Normalize bounded request-id history and migrate the legacy scalar state."""
+
+    raw_request_ids = st.session_state.get(AGENT_HOME_CONSUMED_REQUEST_IDS_KEY, [])
+    request_ids: list[str] = []
+    seen: set[str] = set()
+    if isinstance(raw_request_ids, (list, tuple)):
+        for item in raw_request_ids:
+            if isinstance(item, str) and item and item not in seen:
+                request_ids.append(item)
+                seen.add(item)
+
+    legacy_request_id = st.session_state.pop(AGENT_HOME_LEGACY_REQUEST_ID_KEY, None)
+    if (
+        isinstance(legacy_request_id, str)
+        and legacy_request_id
+        and legacy_request_id not in seen
+    ):
+        request_ids.append(legacy_request_id)
+
+    request_ids = request_ids[-AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT:]
+    st.session_state[AGENT_HOME_CONSUMED_REQUEST_IDS_KEY] = request_ids
+    return request_ids
+
+
 def _ensure_session() -> None:
     if "chat_messages" not in st.session_state:
         st.session_state["chat_messages"] = _initial_messages()
@@ -588,8 +616,7 @@ def _ensure_session() -> None:
     if "current_evaluation" not in st.session_state:
         st.session_state["current_evaluation"] = None
     ensure_report_session()
-    if "_agent_home_first_prompt_request_id" not in st.session_state:
-        st.session_state["_agent_home_first_prompt_request_id"] = None
+    _ensure_agent_home_consumed_request_ids()
     if "_agent_home_first_prompt_ack_request_id" not in st.session_state:
         st.session_state["_agent_home_first_prompt_ack_request_id"] = None
     if "_agent_home_first_prompt_ack_status" not in st.session_state:
@@ -1048,25 +1075,30 @@ def _handle_chat_prompt(prompt: str) -> ChatRoute:
 
 
 def _claim_agent_home_first_prompt(value: Any) -> bool:
-    """Claim one request ID before routing and ACK duplicates without rerouting."""
+    """Claim each unseen request ID and ACK exact duplicates without rerouting."""
 
     request = prompt_bridge.validate_initial_prompt_payload(value)
     if request is None:
         return False
-    claimed_request_id = st.session_state.get("_agent_home_first_prompt_request_id")
-    if claimed_request_id is None:
-        st.session_state["_agent_home_first_prompt_request_id"] = request.request_id
-        st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
-        st.session_state["_agent_home_first_prompt_ack_status"] = "accepted"
-        st.session_state["_agent_home_first_prompt_pending"] = {
-            "request_id": request.request_id,
-            "prompt": request.prompt,
-        }
-        return True
-    if claimed_request_id == request.request_id:
+    consumed_request_ids = _ensure_agent_home_consumed_request_ids()
+    if request.request_id in consumed_request_ids:
         st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
         st.session_state["_agent_home_first_prompt_ack_status"] = "duplicate"
-    return False
+        return False
+    if st.session_state.get("_agent_home_first_prompt_pending") is not None:
+        return False
+
+    consumed_request_ids.append(request.request_id)
+    st.session_state[AGENT_HOME_CONSUMED_REQUEST_IDS_KEY] = consumed_request_ids[
+        -AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT:
+    ]
+    st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
+    st.session_state["_agent_home_first_prompt_ack_status"] = "accepted"
+    st.session_state["_agent_home_first_prompt_pending"] = {
+        "request_id": request.request_id,
+        "prompt": request.prompt,
+    }
+    return True
 
 
 def _direct_submission_message(draft: dict[str, Any]) -> str:

@@ -25,31 +25,49 @@ def test_home_exposes_one_plain_text_prompt_without_get_field_name() -> None:
     assert 'aria-label="질문 보내기"' in HTML
 
 
-def test_home_one_shot_state_stores_only_used_and_request_id() -> None:
-    assert "window.sessionStorage" in HOME_JS
+def test_home_prompt_runtime_does_not_use_browser_storage_one_shot() -> None:
+    assert "window.sessionStorage" not in HOME_JS
     assert "window.localStorage" not in HOME_JS
-    assert "used: true" in CONTRACT_JS
-    assert "request_id:" in CONTRACT_JS
-    assert "storage.setItem(STORAGE_KEY, JSON.stringify(state))" in CONTRACT_JS
+    assert "contract.readTabState" not in HOME_JS
+    assert "contract.writeTabState" not in HOME_JS
     storage_block = CONTRACT_JS.split("function writeTabState", 1)[1].split("function createInitialPromptEnvelope", 1)[0]
     assert "prompt" not in storage_block
 
 
-def test_home_submit_handles_ime_and_locks_immediately() -> None:
+def test_home_submit_handles_ime_and_uses_transient_delivery_lock() -> None:
     assert 'input.addEventListener("compositionstart"' in HOME_JS
     assert 'input.addEventListener("compositionend"' in HOME_JS
     assert "event.isComposing" in CONTRACT_JS
     assert "event.keyCode !== 229" in CONTRACT_JS
     assert "event.repeat" in CONTRACT_JS
-    assert "input.disabled = true" in HOME_JS
-    assert "submitButton.disabled = true" in HOME_JS
+    assert "deliveryPending = true" in HOME_JS
+    assert "const disabled = panelOpen || deliveryPending" in HOME_JS
+    assert "input.disabled = disabled" in HOME_JS
+    assert "submitButton.disabled = disabled" in HOME_JS
+    assert 'document.addEventListener("eoswos:initial-prompt-ack"' in HOME_JS
+    assert 'document.addEventListener("eoswos:initial-prompt-delivery-failed"' in HOME_JS
+    assert "event.detail?.requestId !== activeRequestId" in HOME_JS
     assert "질문을 AI 패널로 전달했습니다. 이후 대화는 AI 패널에서 계속해 주세요." in HOME_JS
 
 
-def test_manual_panel_open_disables_home_prompt() -> None:
-    assert 'event.detail?.reason !== "manual"' in HOME_JS
+def test_panel_open_disables_and_actual_close_reenables_home_prompt() -> None:
+    assert 'document.addEventListener("eoswos:ai-panel-opened"' in HOME_JS
+    assert 'document.addEventListener("eoswos:ai-panel-closed"' in HOME_JS
+    assert "panelOpen = true" in HOME_JS
+    assert "panelOpen = false" in HOME_JS
     assert 'detail: { reason: reason || "programmatic" }' in WIDGET_JS
+    assert 'new CustomEvent("eoswos:ai-panel-closed"' in WIDGET_JS
+    assert "if (!open && wasOpen)" in WIDGET_JS
     assert 'setPanelOpen(shouldOpen, shouldOpen ? "manual" : "manual_close")' in WIDGET_JS
+
+
+def test_each_home_submission_creates_a_fresh_request_id() -> None:
+    submit_block = HOME_JS.split("const submitFirstPrompt", 1)[1].split(
+        'input.addEventListener("compositionstart"',
+        1,
+    )[0]
+    assert "contract.createRequestId(window.crypto)" in submit_block
+    assert "sessionStorage" not in submit_block
 
 
 def test_prompt_never_enters_url_history_referer_or_analytics() -> None:

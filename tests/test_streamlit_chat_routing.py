@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
@@ -10,6 +11,8 @@ from streamlit.testing.v1 import AppTest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CONSUMED_REQUEST_IDS_KEY = "_agent_home_prompt_consumed_request_ids"
+LEGACY_REQUEST_ID_KEY = "_agent_home_first_prompt_request_id"
 
 
 class _FakeResponse:
@@ -178,9 +181,9 @@ def test_agent_home_general_prompt_uses_existing_chatbase_path_once(monkeypatch)
     assert not at.exception
     assert calls["chatbase"] == 1
     assert calls["evaluate"] == 0
-    assert at.session_state["_agent_home_first_prompt_request_id"] == (
+    assert at.session_state[CONSUMED_REQUEST_IDS_KEY] == [
         "0d830966-c9a7-4356-9498-b96af4a5159a"
-    )
+    ]
     assert at.session_state["_agent_home_first_prompt_ack_request_id"] == (
         "0d830966-c9a7-4356-9498-b96af4a5159a"
     )
@@ -219,10 +222,10 @@ def test_agent_home_ack_state_is_replayed_for_loss_retry(monkeypatch) -> None:
     assert any(item.get("ack_status") == "duplicate" for item in captured)
 
 
-def test_new_evaluation_reset_preserves_consumed_first_prompt_id(monkeypatch) -> None:
+def test_new_evaluation_reset_preserves_consumed_request_ids(monkeypatch) -> None:
     payload = _bridge_payload("M2는 뭐야?")
     at, calls = _app(monkeypatch, payload)
-    consumed = at.session_state["_agent_home_first_prompt_request_id"]
+    consumed = list(at.session_state[CONSUMED_REQUEST_IDS_KEY])
 
     at.session_state["chat_stage"] = "complete"
     at.run(timeout=10)
@@ -230,7 +233,7 @@ def test_new_evaluation_reset_preserves_consumed_first_prompt_id(monkeypatch) ->
 
     assert not at.exception
     assert calls["chatbase"] == 1
-    assert at.session_state["_agent_home_first_prompt_request_id"] == consumed
+    assert at.session_state[CONSUMED_REQUEST_IDS_KEY] == consumed
 
 
 def test_native_chat_continues_after_agent_home_first_prompt(monkeypatch) -> None:
@@ -307,24 +310,102 @@ def test_agent_home_same_id_with_changed_prompt_is_not_rerouted(monkeypatch) -> 
     assert user_messages == ["M2는 뭐야?"]
 
 
-def test_agent_home_different_second_request_id_is_rejected(monkeypatch) -> None:
+def test_agent_home_new_ids_route_once_and_delayed_old_retry_is_duplicate(monkeypatch) -> None:
     first = _bridge_payload("M2는 뭐야?")
-    at, calls = _app(monkeypatch, first)
+    active = {"payload": first}
+    at, calls = _app(
+        monkeypatch,
+        bridge_renderer=lambda **_kwargs: active["payload"],
+    )
     assert calls["chatbase"] == 1
 
     second = _bridge_payload(
         "Final Score는 뭐야?",
         request_id="e167d850-5fa0-45f9-998c-4baab3e75435",
     )
-    monkeypatch.setattr(
-        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
-        lambda **_kwargs: second,
+    active["payload"] = second
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 2
+    assert at.session_state[CONSUMED_REQUEST_IDS_KEY] == [
+        first["request_id"],
+        second["request_id"],
+    ]
+    user_messages = [
+        item.get("content")
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user"
+    ]
+    assert user_messages == ["M2는 뭐야?", "Final Score는 뭐야?"]
+
+    at.run(timeout=10)
+    assert calls["chatbase"] == 2
+    assert at.session_state["_agent_home_first_prompt_ack_request_id"] == second[
+        "request_id"
+    ]
+    assert at.session_state["_agent_home_first_prompt_ack_status"] == "duplicate"
+
+    active["payload"] = _bridge_payload(
+        "변조된 과거 질문",
+        request_id=first["request_id"],
     )
     at.run(timeout=10)
 
     assert not at.exception
+    assert calls["chatbase"] == 2
+    assert at.session_state["_agent_home_first_prompt_ack_request_id"] == first[
+        "request_id"
+    ]
+    assert at.session_state["_agent_home_first_prompt_ack_status"] == "duplicate"
+    assert [
+        item.get("content")
+        for item in at.session_state["chat_messages"]
+        if item.get("role") == "user"
+    ] == ["M2는 뭐야?", "Final Score는 뭐야?"]
+
+
+def test_agent_home_legacy_request_id_migrates_without_rerouting(monkeypatch) -> None:
+    at, calls = _app(monkeypatch)
+    legacy_request_id = "0d830966-c9a7-4356-9498-b96af4a5159a"
+    at.session_state[CONSUMED_REQUEST_IDS_KEY] = []
+    at.session_state[LEGACY_REQUEST_ID_KEY] = legacy_request_id
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        lambda **_kwargs: _bridge_payload(
+            "변조된 과거 질문",
+            request_id=legacy_request_id,
+        ),
+    )
+
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["chatbase"] == 0
+    assert at.session_state[CONSUMED_REQUEST_IDS_KEY] == [legacy_request_id]
+    assert at.session_state["_agent_home_first_prompt_ack_status"] == "duplicate"
+
+
+def test_agent_home_consumed_request_id_registry_is_bounded(monkeypatch) -> None:
+    at, calls = _app(monkeypatch)
+    existing_request_ids = [str(uuid4()) for _ in range(64)]
+    new_request_id = str(uuid4())
+    at.session_state[CONSUMED_REQUEST_IDS_KEY] = existing_request_ids
+    monkeypatch.setattr(
+        "agent_home_prompt_bridge.render_agent_home_prompt_bridge",
+        lambda **_kwargs: _bridge_payload(
+            "M2는 뭐야?",
+            request_id=new_request_id,
+        ),
+    )
+
+    at.run(timeout=10)
+
+    assert not at.exception
     assert calls["chatbase"] == 1
-    assert at.session_state["_agent_home_first_prompt_request_id"] == first["request_id"]
+    assert at.session_state[CONSUMED_REQUEST_IDS_KEY] == (
+        existing_request_ids[1:] + [new_request_id]
+    )
 
 def test_chat_loading_status_requests_smooth_autoscroll() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")

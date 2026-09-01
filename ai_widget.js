@@ -280,6 +280,11 @@
                 detail: { reason: reason || "programmatic" },
             }));
         }
+        if (!open && wasOpen) {
+            document.dispatchEvent(new CustomEvent("eoswos:ai-panel-closed", {
+                detail: { reason: reason || "programmatic" },
+            }));
+        }
     }
 
     launcher.addEventListener("click", function () {
@@ -288,7 +293,7 @@
     });
 
     closeButton.addEventListener("click", function () {
-        setPanelOpen(false);
+        setPanelOpen(false, "close_button");
         launcher.focus();
     });
 
@@ -306,7 +311,7 @@
 
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape" && launcher.getAttribute("aria-expanded") === "true") {
-            setPanelOpen(false);
+            setPanelOpen(false, "escape");
             launcher.focus();
         }
     });

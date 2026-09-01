@@ -75,6 +75,34 @@ def _tab_state(driver) -> dict:
     return json.loads(raw) if raw else {}
 
 
+def _install_ack_recorder(driver) -> None:
+    driver.execute_script(
+        """
+        window.__eoswosAckRequestIds = [];
+        document.addEventListener("eoswos:initial-prompt-ack", (event) => {
+            window.__eoswosAckRequestIds.push(event.detail.requestId);
+        });
+        """
+    )
+
+
+def _ack_request_ids(driver) -> list[str]:
+    return driver.execute_script("return window.__eoswosAckRequestIds || [];")
+
+
+def _close_panel_and_wait_for_home_prompt(driver):
+    panel = driver.find_element(By.ID, "ai-evaluation-panel")
+    driver.find_element(By.ID, "ai-panel-close").click()
+    WebDriverWait(driver, 10).until(
+        lambda _driver: panel.get_attribute("aria-hidden") == "true"
+    )
+    prompt_input = driver.find_element(By.ID, "agent-home-first-prompt-input")
+    WebDriverWait(driver, 10).until(
+        lambda _driver: not prompt_input.get_attribute("disabled")
+    )
+    return prompt_input
+
+
 def _wait_for_evaluation_form(driver, prompt: str) -> None:
     frame = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.ID, "ai-evaluation-frame"))
@@ -89,6 +117,13 @@ def _wait_for_evaluation_form(driver, prompt: str) -> None:
     )
     WebDriverWait(driver, 30).until(
         lambda child: "평가시작" in child.find_element(By.TAG_NAME, "body").text
+    )
+    WebDriverWait(driver, 30).until(
+        lambda child: sum(
+            1
+            for item in child.find_elements(By.CSS_SELECTOR, '[data-testid="stChatMessage"]')
+            if prompt in item.text
+        ) == 1
     )
     user_occurrences = [
         item
@@ -124,44 +159,51 @@ def test_cold_start_keeps_prompt_queued_until_ready(driver) -> None:
     )
 
 
-def test_desktop_one_shot_cross_origin_reload_and_independent_new_tab(driver) -> None:
+def test_desktop_repeated_prompts_use_new_ids_and_reload_starts_active(driver) -> None:
     _open_new_tab(driver)
-    prompt = "평가."
+    _install_ack_recorder(driver)
+    first_prompt = "평가."
     prompt_input = driver.find_element(By.ID, "agent-home-first-prompt-input")
-    prompt_input.send_keys(prompt, Keys.ENTER, Keys.ENTER)
+    prompt_input.send_keys(first_prompt, Keys.ENTER, Keys.ENTER)
 
     WebDriverWait(driver, 10).until(lambda _driver: prompt_input.get_attribute("disabled"))
-    assert driver.find_element(By.ID, "ai-evaluation-panel").get_attribute("aria-hidden") == "false"
-    assert "질문을 AI 패널로 전달했습니다" in driver.find_element(
+    panel = driver.find_element(By.ID, "ai-evaluation-panel")
+    assert panel.get_attribute("aria-hidden") == "false"
+    assert "질문을 AI 패널로 전달" in driver.find_element(
         By.ID,
         "agent-home-first-prompt-status",
-    ).text
-    state = _tab_state(driver)
-    assert set(state) == {"used", "request_id"}
-    assert state["used"] is True
-    request_id = state["request_id"]
-    assert isinstance(request_id, str) and len(request_id) == 36
-    assert prompt not in driver.current_url
-    assert quote(prompt) not in driver.current_url
-    _wait_for_evaluation_form(driver, prompt)
+    ).get_attribute("textContent")
+    assert _tab_state(driver) == {}
+    assert first_prompt not in driver.current_url
+    assert quote(first_prompt) not in driver.current_url
+    _wait_for_evaluation_form(driver, first_prompt)
+    WebDriverWait(driver, 10).until(lambda _driver: len(_ack_request_ids(driver)) == 1)
 
-    driver.find_element(By.ID, "ai-panel-refresh").click()
-    frame = WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.ID, "ai-evaluation-frame"))
+    second_input = _close_panel_and_wait_for_home_prompt(driver)
+    second_prompt = "메자닌 평가해줘."
+    second_input.send_keys(second_prompt, Keys.ENTER)
+    WebDriverWait(driver, 10).until(lambda _driver: second_input.get_attribute("disabled"))
+    WebDriverWait(driver, 10).until(
+        lambda _driver: panel.get_attribute("aria-hidden") == "false"
     )
-    driver.switch_to.frame(frame)
-    WebDriverWait(driver, 90).until(
-        lambda child: "EosWos AI Agent" in child.find_element(By.TAG_NAME, "body").text
-    )
-    assert prompt not in driver.find_element(By.TAG_NAME, "body").text
-    driver.switch_to.default_content()
+    _wait_for_evaluation_form(driver, second_prompt)
+    WebDriverWait(driver, 10).until(lambda _driver: len(_ack_request_ids(driver)) == 2)
 
+    request_ids = _ack_request_ids(driver)
+    assert all(isinstance(request_id, str) and len(request_id) == 36 for request_id in request_ids)
+    assert len(set(request_ids)) == 2
+    assert _tab_state(driver) == {}
+    assert second_prompt not in driver.current_url
+    assert quote(second_prompt) not in driver.current_url
+
+    _close_panel_and_wait_for_home_prompt(driver)
     driver.refresh()
     reloaded_input = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.ID, "agent-home-first-prompt-input"))
     )
-    assert reloaded_input.get_attribute("disabled")
-    assert _tab_state(driver)["request_id"] == request_id
+    assert not reloaded_input.get_attribute("disabled")
+    assert driver.find_element(By.ID, "ai-evaluation-panel").get_attribute("aria-hidden") == "true"
+    assert _tab_state(driver) == {}
 
     _open_new_tab(driver)
     assert not driver.find_element(
@@ -171,17 +213,32 @@ def test_desktop_one_shot_cross_origin_reload_and_independent_new_tab(driver) ->
     assert _tab_state(driver) == {}
 
 
-def test_manual_panel_open_consumes_home_entry_without_prompt(driver) -> None:
+def test_manual_panel_open_disables_then_close_reenables_home_prompt(driver) -> None:
     _open_new_tab(driver)
-    driver.find_element(By.ID, "ai-evaluation-launcher").click()
-
     prompt_input = driver.find_element(By.ID, "agent-home-first-prompt-input")
+    prompt_input.send_keys("작성 중 질문")
+    launcher = driver.find_element(By.ID, "ai-evaluation-launcher")
+    launcher.click()
+
     WebDriverWait(driver, 10).until(lambda _driver: prompt_input.get_attribute("disabled"))
-    assert _tab_state(driver) == {"used": True, "request_id": None}
-    assert "AI 패널이 열렸습니다" in driver.find_element(
+    assert prompt_input.get_attribute("value") == "작성 중 질문"
+    assert _tab_state(driver) == {}
+    assert "AI 패널이 열려 있습니다" in driver.find_element(
         By.ID,
         "agent-home-first-prompt-status",
-    ).text
+    ).get_attribute("textContent")
+
+    launcher.click()
+    WebDriverWait(driver, 10).until(
+        lambda _driver: driver.find_element(
+            By.ID,
+            "ai-evaluation-panel",
+        ).get_attribute("aria-hidden") == "true"
+    )
+    WebDriverWait(driver, 10).until(
+        lambda _driver: not prompt_input.get_attribute("disabled")
+    )
+    assert prompt_input.get_attribute("value") == "작성 중 질문"
 
 
 def test_malicious_origin_and_wrong_source_cannot_release_queued_prompt(driver) -> None:
