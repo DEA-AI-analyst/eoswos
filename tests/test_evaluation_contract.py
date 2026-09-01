@@ -50,9 +50,23 @@ def test_third_party_contract_requires_distinct_codes() -> None:
 
 def test_structured_validation_rejects_invalid_ranges() -> None:
     values = _valid_self_stock()
-    values.update({"conversion_price": 0, "call_rate": 1.1, "ttm_years": 5.1})
+    values.update({"conversion_price": 0, "call_rate": 1.1, "ttm_years": 30.1})
     errors = validate_draft(values, today=date(2026, 8, 24))
     assert len(errors) == 3
+    assert "최초 계약 TTM" in " ".join(errors)
+
+
+def test_contract_ttm_range_is_point_25_to_30_and_payload_keeps_raw_value() -> None:
+    values = _valid_self_stock()
+    values["ttm_years"] = 30.0
+
+    assert validate_draft(values, today=date(2026, 8, 31)) == []
+    assert build_api_payload(values, today=date(2026, 8, 31))["ttm_years"] == 30.0
+
+    values["ttm_years"] = 0.24
+    assert "최초 계약 TTM" in " ".join(
+        validate_draft(values, today=date(2026, 8, 31))
+    )
 
 
 def test_self_stock_missing_underlying_is_normalized() -> None:
@@ -106,7 +120,7 @@ def test_bps_provenance_display_translates_only_documented_enums() -> None:
         "재무정보 기준일": "2026-06-30",
         "재무제표": "연결재무제표(CFS)",
         "재무정보 대상": "기초자산 발행사",
-        "평가 사용 출처": "DART 재무정보 · KRX 상장주식수",
+        "평가 사용 출처": "DART 재무 + 검증된 KRX 상장주",
         "출처 상세": "지배기업 소유주지분 검증 완료",
     }
 

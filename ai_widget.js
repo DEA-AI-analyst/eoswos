@@ -9,6 +9,7 @@
     const MIN_PANEL_HEIGHT = 420;
     const PANEL_HORIZONTAL_GAP = 32;
     const PANEL_VERTICAL_GAP = 160;
+    const promptContract = window.EoswosFirstPromptContract;
 
     const panel = document.createElement("section");
     panel.id = "ai-evaluation-panel";
@@ -29,7 +30,7 @@
         '<div id="ai-panel-loading" class="ai-panel-loading">AI 평가 화면을 불러오는 중입니다.</div>',
         '<iframe id="ai-evaluation-frame"',
         ' title="EOSWOS AI 메자닌 단건평가"',
-        ' data-src="https://eoswos-agent-bps-stg.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"',
+        ' data-src="https://eoswos-agent-ai-report-stg.streamlit.app/?embed=true&amp;embed_options=hide_loading_screen"',
         ' loading="lazy"',
         ' scrolling="no"',
         ' referrerpolicy="strict-origin-when-cross-origin"></iframe>'
@@ -65,6 +66,43 @@
     const resizeHandles = panel.querySelectorAll(".ai-panel-resize-handle");
     let preferredPanelSize = readPreferredPanelSize();
     let activeResize = null;
+    let bridgeSource = null;
+
+    const childOrigin = (() => {
+        try {
+            return new URL(frame.dataset.src, window.location.href).origin;
+        } catch (error) {
+            return "";
+        }
+    })();
+
+    const deliveryController = promptContract && childOrigin
+        ? promptContract.createDeliveryController({
+            send: function (target, payload) {
+                target.postMessage(payload, childOrigin);
+            },
+            schedule: function (callback, delay) {
+                return window.setTimeout(callback, delay);
+            },
+            cancel: function (timerId) {
+                window.clearTimeout(timerId);
+            },
+            timeoutMs: promptContract.ACK_TIMEOUT_MS,
+            readyTimeoutMs: promptContract.READY_TIMEOUT_MS,
+            onAck: function (requestId) {
+                refreshButton.disabled = false;
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-ack", {
+                    detail: { requestId: requestId },
+                }));
+            },
+            onFailure: function (requestId) {
+                refreshButton.disabled = false;
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: requestId },
+                }));
+            },
+        })
+        : null;
 
     function readPreferredPanelSize() {
         try {
@@ -208,6 +246,9 @@
     });
 
     function loadFrame(forceRefresh) {
+        if (forceRefresh && deliveryController?.hasPending()) {
+            return false;
+        }
         let source = frame.dataset.src;
 
         if (forceRefresh) {
@@ -218,10 +259,14 @@
         loading.hidden = false;
         panel.setAttribute("aria-busy", "true");
         refreshButton.classList.add("is-loading");
+        bridgeSource = null;
+        deliveryController?.markNotReady();
         frame.src = source;
+        return true;
     }
 
-    function setPanelOpen(open) {
+    function setPanelOpen(open, reason) {
+        const wasOpen = launcher.getAttribute("aria-expanded") === "true";
         launcher.setAttribute("aria-expanded", String(open));
         launcher.setAttribute("aria-label", open ? "AI Agent 닫기" : "AI Agent 열기");
         panel.setAttribute("aria-hidden", String(!open));
@@ -230,14 +275,25 @@
         if (open && !frame.getAttribute("src")) {
             loadFrame(false);
         }
+        if (open && !wasOpen) {
+            document.dispatchEvent(new CustomEvent("eoswos:ai-panel-opened", {
+                detail: { reason: reason || "programmatic" },
+            }));
+        }
+        if (!open && wasOpen) {
+            document.dispatchEvent(new CustomEvent("eoswos:ai-panel-closed", {
+                detail: { reason: reason || "programmatic" },
+            }));
+        }
     }
 
     launcher.addEventListener("click", function () {
-        setPanelOpen(launcher.getAttribute("aria-expanded") !== "true");
+        const shouldOpen = launcher.getAttribute("aria-expanded") !== "true";
+        setPanelOpen(shouldOpen, shouldOpen ? "manual" : "manual_close");
     });
 
     closeButton.addEventListener("click", function () {
-        setPanelOpen(false);
+        setPanelOpen(false, "close_button");
         launcher.focus();
     });
 
@@ -246,6 +302,8 @@
     });
 
     frame.addEventListener("load", function () {
+        bridgeSource = null;
+        deliveryController?.markNotReady();
         loading.hidden = true;
         panel.setAttribute("aria-busy", "false");
         refreshButton.classList.remove("is-loading");
@@ -253,8 +311,94 @@
 
     document.addEventListener("keydown", function (event) {
         if (event.key === "Escape" && launcher.getAttribute("aria-expanded") === "true") {
-            setPanelOpen(false);
+            setPanelOpen(false, "escape");
             launcher.focus();
         }
+    });
+
+    function isExpectedBridgeSource(source) {
+        if (!source) {
+            return false;
+        }
+        try {
+            if (source.top !== window) {
+                return false;
+            }
+
+            // Streamlit Community Cloud adds a streamlitApp wrapper iframe
+            // between the public app iframe and custom components. Accept only
+            // sources whose bounded parent chain terminates at our exact app
+            // iframe; sibling or unrelated frames still fail closed.
+            let current = source;
+            for (let depth = 0; depth < 5; depth += 1) {
+                if (current === frame.contentWindow) {
+                    return true;
+                }
+                const parent = current.parent;
+                if (!parent || parent === current) {
+                    return false;
+                }
+                current = parent;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    window.addEventListener("message", function (event) {
+        if (!promptContract || !deliveryController || event.origin !== childOrigin) {
+            return;
+        }
+        if (promptContract.isReadyMessage(event.data)) {
+            if (!isExpectedBridgeSource(event.source)) {
+                return;
+            }
+            bridgeSource = event.source;
+            deliveryController.markReady(bridgeSource);
+            return;
+        }
+        if (!bridgeSource || event.source !== bridgeSource) {
+            return;
+        }
+        const pendingRequestId = event.data?.request_id;
+        if (promptContract.isAckMessage(event.data, pendingRequestId)) {
+            deliveryController.acknowledge(pendingRequestId);
+        }
+    });
+
+    window.EoswosAiWidget = Object.freeze({
+        openPanel: function () {
+            setPanelOpen(true, "programmatic");
+        },
+        openForInitialPrompt: function (request) {
+            if (!promptContract || !deliveryController) {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request?.requestId || null },
+                }));
+                setPanelOpen(true, "initial_prompt");
+                return false;
+            }
+            const normalized = promptContract.normalizePrompt(request?.prompt);
+            if (!normalized.ok || typeof request?.requestId !== "string") {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request?.requestId || null },
+                }));
+                return false;
+            }
+            const envelope = promptContract.createInitialPromptEnvelope(
+                request.requestId,
+                normalized.prompt,
+            );
+            if (!deliveryController.queue(envelope)) {
+                document.dispatchEvent(new CustomEvent("eoswos:initial-prompt-delivery-failed", {
+                    detail: { requestId: request.requestId },
+                }));
+                return false;
+            }
+            refreshButton.disabled = true;
+            setPanelOpen(true, "initial_prompt");
+            return true;
+        },
     });
 }());

@@ -14,7 +14,16 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from ai_evaluation_report_ui import (
+    _build_price_basis_detail_rows,
+    _render_report_table,
+    clear_report_session,
+    ensure_report_session,
+    generate_ai_report,
+    render_ai_report_workflow,
+)
 
+import agent_home_prompt_bridge as prompt_bridge
 import chat_intent_router as chat_router
 from chat_evaluation_context import (
     build_read_only_evaluation_context as _build_read_only_evaluation_context,
@@ -70,6 +79,8 @@ from mezz_api_client import (
     MezzApiError,
 )
 from mezz_evaluation_contract import (
+    CONTRACT_TTM_MAX_YEARS,
+    CONTRACT_TTM_MIN_YEARS,
     CREDIT_RATINGS,
     FIELD_LABELS,
     SELF_STOCK_PRODUCT,
@@ -89,6 +100,9 @@ st.set_page_config(
 
 APP_DIR = Path(__file__).resolve().parent
 CODE_PATH = APP_DIR / "code.xlsx"
+AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT = 64
+AGENT_HOME_CONSUMED_REQUEST_IDS_KEY = "_agent_home_prompt_consumed_request_ids"
+AGENT_HOME_LEGACY_REQUEST_ID_KEY = "_agent_home_first_prompt_request_id"
 
 
 @st.cache_data(show_spinner=False)
@@ -293,8 +307,16 @@ st.markdown(
             background: #f2f6fb;
             font-weight: 650;
         }
+        .eoswos-source-details-marker { display: none; }
+        [data-testid="stExpander"]:has(.eoswos-source-details-marker)
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stExpander"]:has(.eoswos-source-details-marker) code {
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+        }
         [data-testid="stChatInput"] textarea { letter-spacing: 0 !important; }
-        [data-testid="stElementContainer"]:has([data-testid="stIFrame"]) {
+        [data-testid="stElementContainer"]:has([data-testid="stIFrame"]),
+        [data-testid="stElementContainer"]:has([data-testid="stCustomComponentV1"]) {
             position: fixed !important;
             width: 0 !important;
             height: 0 !important;
@@ -307,11 +329,11 @@ st.markdown(
         }
 
         [data-testid="stElementContainer"]:has(.chat-panel-header) {
-            margin-bottom: 0.7rem;
+            margin-bottom: 0.55rem;
         }
         .chat-panel-header {
             padding-right: 5.4rem;
-            padding-bottom: 0.65rem;
+            padding-bottom: 0;
         }
         .chat-title {
             padding: 0.25rem 0 0.1rem;
@@ -368,11 +390,70 @@ st.markdown(
             font-size: 0.82rem;
             line-height: 1.55;
         }
+        .eoswos-table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #e2e7ef;
+            border-radius: 8px;
+            background: #ffffff;
+        }
+        .eoswos-data-table {
+            width: 100%;
+
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .eoswos-data-table--wide {
+            min-width: 720px;
+        }
+        .eoswos-data-table--wide th,
+        .eoswos-data-table--wide td {
+            white-space: nowrap;
+        }
+        .eoswos-data-table th,
+        .eoswos-data-table td {
+            padding: 0.5rem 0.55rem;
+            border-right: 1px solid #e2e7ef;
+            border-bottom: 1px solid #e2e7ef;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+        .eoswos-data-table th {
+            color: #667085;
+            background: #f8fafc;
+            font-weight: 500;
+        }
+        .eoswos-data-table th:last-child,
+        .eoswos-data-table td:last-child {
+            border-right: 0;
+        }
+        .eoswos-data-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+        [data-testid="stBottomBlockContainer"] {
+            width: 100% !important;
+            max-width: 720px !important;
+            margin-right: auto !important;
+            margin-left: auto !important;
+            padding-right: 0 !important;
+            padding-left: 0 !important;
+            box-sizing: border-box;
+        }
+        @media (min-width: 900px) {
+            .block-container,
+            [data-testid="stBottomBlockContainer"] {
+                max-width: 794px !important;
+            }
+        }
         @media (max-width: 520px) {
             .block-container {
                 padding-top: 0.55rem;
                 padding-right: 0.65rem;
                 padding-left: 0.65rem;
+            }
+            [data-testid="stBottomBlockContainer"] {
+                padding-right: 0.65rem !important;
+                padding-left: 0.65rem !important;
             }
             .chat-title strong { font-size: 1.2rem; }
         }
@@ -450,7 +531,7 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         <div class="result-summary">
             <div class="grade"><span>M Grade</span><strong>{_escape(result.get('m_grade'))}</strong></div>
             <div><span>선택 가격기준</span><strong>{_escape(selected_basis)}</strong></div>
-            <div><span>M Score</span><strong>{_escape(_format_number(result.get('m_score'), 3))}</strong></div>
+            <div><span>M Score</span><strong>{_escape(_format_number(result.get('m_score'), 0))}</strong></div>
             <div><span>M Rank</span><strong>{_escape(_format_rank(result.get('final_rank')))}</strong></div>
             <div><span>Final Score</span><strong>{_escape(_format_number(result.get('final_score'), 6))}</strong></div>
             <div><span>가격</span><strong>{_escape(_format_number(selected.get('price'), 0))}</strong></div>
@@ -466,41 +547,16 @@ def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
         unsafe_allow_html=True,
     )
 
-    rows: list[dict[str, Any]] = []
-    for basis in ("1D", "1W", "1M"):
-        item = price_basis.get(basis, {}) if isinstance(price_basis, dict) else {}
-        item_e = item.get("e_m", {}) if isinstance(item, dict) else {}
-        item_p = item.get("p_m", {}) if isinstance(item, dict) else {}
-        item_s = item.get("s_m", {}) if isinstance(item, dict) else {}
-        rows.append(
-            {
-                "기준": basis,
-                "가격": item.get("price"),
-                "M": item.get("m_grade"),
-                "M Score": item.get("m_score"),
-                "Rank": item.get("final_rank"),
-                "Final": item.get("final_score"),
-                "e_M": item_e.get("grade"),
-                "p_M": item_p.get("grade"),
-                "s_M": item_s.get("grade"),
-                "도달/PK": item.get("reach_pk_strength"),
-                "도달지점": item.get("timing_point"),
-            }
-        )
+    rows = _build_price_basis_detail_rows(price_basis)
 
     with st.expander("1D · 1W · 1M 세부 결과"):
-        st.dataframe(
-            rows,
-            hide_index=True,
-            width="stretch",
-            column_config={
-                "가격": st.column_config.NumberColumn(format="localized"),
-                "M Score": st.column_config.NumberColumn(format="%.6f"),
-                "Final": st.column_config.NumberColumn(format="%.9f"),
-            },
-        )
+        _render_report_table(rows, center_all=True)
 
     with st.expander("상세 출처 보기"):
+        st.markdown(
+            '<span class="eoswos-source-details-marker"></span>',
+            unsafe_allow_html=True,
+        )
         st.write(f"요청 ID: `{result.get('request_id', '-')}`")
         st.write(f"평가기준일: `{result.get('price_basis_date', '-')}`")
         st.write(f"발행회사: {result.get('issuer_company', '-')}")
@@ -518,9 +574,34 @@ def _initial_messages() -> list[dict[str, Any]]:
         {
             "role": "assistant",
             "kind": "text",
-            "content": "안녕하세요. EosWos AI입니다. 무엇을 도와드릴까요?",
+            "content": "안녕하세요. EosWos AI Agent입니다. 무엇을 도와드릴까요?",
         }
     ]
+
+
+def _ensure_agent_home_consumed_request_ids() -> list[str]:
+    """Normalize bounded request-id history and migrate the legacy scalar state."""
+
+    raw_request_ids = st.session_state.get(AGENT_HOME_CONSUMED_REQUEST_IDS_KEY, [])
+    request_ids: list[str] = []
+    seen: set[str] = set()
+    if isinstance(raw_request_ids, (list, tuple)):
+        for item in raw_request_ids:
+            if isinstance(item, str) and item and item not in seen:
+                request_ids.append(item)
+                seen.add(item)
+
+    legacy_request_id = st.session_state.pop(AGENT_HOME_LEGACY_REQUEST_ID_KEY, None)
+    if (
+        isinstance(legacy_request_id, str)
+        and legacy_request_id
+        and legacy_request_id not in seen
+    ):
+        request_ids.append(legacy_request_id)
+
+    request_ids = request_ids[-AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT:]
+    st.session_state[AGENT_HOME_CONSUMED_REQUEST_IDS_KEY] = request_ids
+    return request_ids
 
 
 def _ensure_session() -> None:
@@ -534,6 +615,14 @@ def _ensure_session() -> None:
         st.session_state["panel_mode"] = None
     if "current_evaluation" not in st.session_state:
         st.session_state["current_evaluation"] = None
+    ensure_report_session()
+    _ensure_agent_home_consumed_request_ids()
+    if "_agent_home_first_prompt_ack_request_id" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_ack_request_id"] = None
+    if "_agent_home_first_prompt_ack_status" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_ack_status"] = None
+    if "_agent_home_first_prompt_pending" not in st.session_state:
+        st.session_state["_agent_home_first_prompt_pending"] = None
 
 
 def _reset_conversation() -> None:
@@ -541,6 +630,7 @@ def _reset_conversation() -> None:
     st.session_state["evaluation_draft"] = {}
     st.session_state["chat_stage"] = "collecting"
     st.session_state["panel_mode"] = None
+    clear_report_session()
     st.session_state["current_evaluation"] = None
     st.session_state.pop("_chat_force_follow_after_submit", None)
 
@@ -793,6 +883,9 @@ def _run_evaluation(client: MezzApiClient, today_seoul: Any) -> None:
             result=api_result.data,
             elapsed_ms=api_result.elapsed_ms,
         )
+        st.session_state["current_evaluation_input"] = copy.deepcopy(payload)
+        st.session_state["ai_report_state"] = None
+        st.session_state["ai_report_error"] = None
         st.session_state["current_evaluation"] = copy.deepcopy(api_result.data)
         st.session_state["chat_stage"] = "complete"
         st.session_state["panel_mode"] = None
@@ -930,6 +1023,84 @@ def _resolve_chat_route(
     return resolved or fallback
 
 
+def _handle_chat_prompt(prompt: str) -> ChatRoute:
+    """Route both native chat and Agent Home prompts through one path."""
+
+    history = safe_chat_history(st.session_state["chat_messages"])
+    _append_message("user", prompt)
+    st.session_state["_chat_force_follow_after_submit"] = True
+    current_evaluation = st.session_state.get("current_evaluation")
+    has_current_evaluation = isinstance(current_evaluation, dict)
+    local_decision = route_chat_message(
+        prompt,
+        has_current_evaluation=has_current_evaluation,
+    )
+    explicit_request_check = getattr(
+        chat_router,
+        "is_explicit_evaluation_request",
+        None,
+    )
+    if callable(explicit_request_check):
+        is_explicit_request = bool(explicit_request_check(prompt))
+    else:
+        is_explicit_request = local_decision.route == ChatRoute.TYPE_B_EVALUATION
+
+    if is_explicit_request:
+        decision = local_decision
+    else:
+        decision = _resolve_chat_route(
+            prompt,
+            has_current_evaluation=has_current_evaluation,
+        )
+
+    if decision.route == ChatRoute.TYPE_D_BLOCKED:
+        st.session_state["panel_mode"] = None
+        _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
+    elif decision.route == ChatRoute.TYPE_B_EVALUATION:
+        st.session_state["panel_mode"] = "메자닌 평가"
+        if st.session_state.get("chat_stage") == "complete":
+            st.session_state["chat_stage"] = "collecting"
+        _append_message("assistant", EVALUATION_FORM_RESPONSE)
+    elif decision.route == ChatRoute.TYPE_E_AI_REPORT:
+        st.session_state["panel_mode"] = None
+        generate_ai_report(
+            api_key=_setting("CHATBASE_API_KEY"),
+            agent_id=_setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID"),
+            model_mode=st.session_state.get("_api_model_mode"),
+        )
+    else:
+        st.session_state["panel_mode"] = None
+        _run_chatbase_query(prompt, route=decision.route, history=history)
+    return decision.route
+
+
+def _claim_agent_home_first_prompt(value: Any) -> bool:
+    """Claim each unseen request ID and ACK exact duplicates without rerouting."""
+
+    request = prompt_bridge.validate_initial_prompt_payload(value)
+    if request is None:
+        return False
+    consumed_request_ids = _ensure_agent_home_consumed_request_ids()
+    if request.request_id in consumed_request_ids:
+        st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
+        st.session_state["_agent_home_first_prompt_ack_status"] = "duplicate"
+        return False
+    if st.session_state.get("_agent_home_first_prompt_pending") is not None:
+        return False
+
+    consumed_request_ids.append(request.request_id)
+    st.session_state[AGENT_HOME_CONSUMED_REQUEST_IDS_KEY] = consumed_request_ids[
+        -AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT:
+    ]
+    st.session_state["_agent_home_first_prompt_ack_request_id"] = request.request_id
+    st.session_state["_agent_home_first_prompt_ack_status"] = "accepted"
+    st.session_state["_agent_home_first_prompt_pending"] = {
+        "request_id": request.request_id,
+        "prompt": request.prompt,
+    }
+    return True
+
+
 def _direct_submission_message(draft: dict[str, Any]) -> str:
     product_label = {
         SELF_STOCK_PRODUCT: "CB / BW / EB(자기주식)",
@@ -942,7 +1113,7 @@ def _direct_submission_message(draft: dict[str, Any]) -> str:
         f"신용등급 `{draft.get('credit_rating') or '-'}`  \n"
         f"전환/행사/교환가액 `{draft.get('conversion_price') or '-'}` · "
         f"Call rate `{draft.get('call_rate')}` · "
-        f"잔존만기 `{draft.get('ttm_years')}년` · "
+        f"최초 계약 TTM `{draft.get('ttm_years')}년` · "
         f"발행일 `{draft.get('issue_date') or '-'}`"
     )
 
@@ -1042,15 +1213,16 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
             )
         with maturity_col:
             ttm_years = st.number_input(
-                "잔존만기(년)",
-                min_value=0.0,
-                max_value=5.0,
+                "최초 계약 TTM(년)",
+                min_value=CONTRACT_TTM_MIN_YEARS,
+                max_value=CONTRACT_TTM_MAX_YEARS,
                 value=None,
                 step=0.25,
                 format="%.2f",
-                placeholder="잔존만기 입력",
-                key="direct_ttm_years",
+                placeholder="계약상 만기년수 입력",
+                key="direct_contract_ttm_years_v2",
             )
+            st.caption("모델 계산에는 최대 5.00년 cap이 자동 적용됩니다.")
 
         issue_date = st.date_input(
             "발행일",
@@ -1128,6 +1300,35 @@ st.markdown(
 
 _ensure_session()
 today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()
+st.session_state["_api_model_mode"] = health.get("model_mode")
+
+try:
+    bridge_value = prompt_bridge.render_agent_home_prompt_bridge(
+        parent_origin=_setting("AGENT_HOME_PARENT_ORIGIN"),
+        deployment_environment=(
+            _setting("AGENT_HOME_DEPLOYMENT_ENVIRONMENT") or "production"
+        ),
+        ack_request_id=st.session_state.get(
+            "_agent_home_first_prompt_ack_request_id"
+        ),
+        ack_status=st.session_state.get("_agent_home_first_prompt_ack_status"),
+    )
+except prompt_bridge.PromptBridgeConfigurationError:
+    bridge_value = None
+    st.error("Agent Home 연결 설정을 확인해 주세요.")
+
+if _claim_agent_home_first_prompt(bridge_value):
+    st.rerun()
+
+pending_first_prompt = st.session_state.pop(
+    "_agent_home_first_prompt_pending",
+    None,
+)
+if isinstance(pending_first_prompt, dict):
+    pending_prompt = pending_first_prompt.get("prompt")
+    if isinstance(pending_prompt, str):
+        _handle_chat_prompt(pending_prompt)
+    st.rerun()
 
 for chat_message in st.session_state["chat_messages"]:
     _render_message(chat_message)
@@ -1147,6 +1348,11 @@ if stage == "confirming":
     st.rerun()
 
 if stage == "complete":
+    render_ai_report_workflow(
+        api_key=_setting("CHATBASE_API_KEY"),
+        agent_id=_setting("CHATBASE_AGENT_ID") or _setting("CHATBASE_CHATBOT_ID"),
+        model_mode=health.get("model_mode"),
+    )
     if st.button("새 평가", icon=":material/add:", width="stretch"):
         _reset_conversation()
         st.rerun()
@@ -1156,43 +1362,5 @@ if stage != "complete" and input_mode == "메자닌 평가":
 
 prompt = st.chat_input("질문을 입력해 주세요.")
 if prompt:
-    history = safe_chat_history(st.session_state["chat_messages"])
-    _append_message("user", prompt)
-    st.session_state["_chat_force_follow_after_submit"] = True
-    current_evaluation = st.session_state.get("current_evaluation")
-    has_current_evaluation = isinstance(current_evaluation, dict)
-    local_decision = route_chat_message(
-        prompt,
-        has_current_evaluation=has_current_evaluation,
-    )
-    explicit_request_check = getattr(
-        chat_router,
-        "is_explicit_evaluation_request",
-        None,
-    )
-    if callable(explicit_request_check):
-        is_explicit_request = bool(explicit_request_check(prompt))
-    else:
-        is_explicit_request = local_decision.route == ChatRoute.TYPE_B_EVALUATION
-
-    if is_explicit_request:
-        decision = local_decision
-    else:
-        decision = _resolve_chat_route(
-            prompt,
-            has_current_evaluation=has_current_evaluation,
-        )
-
-    if decision.route == ChatRoute.TYPE_D_BLOCKED:
-        st.session_state["panel_mode"] = None
-        _append_message("assistant", BLOCKED_SCOPE_RESPONSE)
-    elif decision.route == ChatRoute.TYPE_B_EVALUATION:
-        st.session_state["panel_mode"] = "메자닌 평가"
-        if st.session_state.get("chat_stage") == "complete":
-            st.session_state["chat_stage"] = "collecting"
-        _append_message("assistant", EVALUATION_FORM_RESPONSE)
-    else:
-        st.session_state["panel_mode"] = None
-        _run_chatbase_query(prompt, route=decision.route, history=history)
-
+    _handle_chat_prompt(prompt)
     st.rerun()

@@ -28,7 +28,7 @@ def test_agent_home_exposes_exactly_five_allowlisted_routes() -> None:
 def test_agent_home_uses_only_confirmed_engine_copy() -> None:
     home = _home_markup()
     assert "M-CORE AI Evaluation Engine" in home
-    assert "DEA · Dual ML · Frozen Reference 기반" in home
+    assert "risk DEA • dual ML • Hybrid" in home
 
     unsupported_claims = (
         "Connected",
@@ -45,7 +45,7 @@ def test_agent_home_uses_only_confirmed_engine_copy() -> None:
 
 
 def test_existing_mcore_iframe_and_ai_widget_assets_are_preserved() -> None:
-    assert "https://eoswos.streamlit.app/?embed=true&embed_options=hide_loading_screen" in INDEX
+    assert "https://eoswos-mcore-bps-stg.streamlit.app/?embed=true&embed_options=hide_loading_screen" in INDEX
     assert 'id="mcore-frame"' in INDEX
     assert "./ai_widget.css" in INDEX
     assert "./ai_widget.js" in INDEX

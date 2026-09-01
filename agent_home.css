@@ -132,6 +132,16 @@
     line-height: 1.2;
 }
 
+.agent-home__registration {
+    max-width: min(330px, 38vw);
+    margin-left: auto;
+    color: #c9d6e8;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: right;
+}
+
 .agent-home__main {
     width: min(1160px, calc(100% - 40px));
     margin: 0 auto;
@@ -148,9 +158,9 @@
     display: block;
     margin-bottom: 13px;
     color: var(--agent-blue);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
-    text-transform: uppercase;
+    text-transform: none;
 }
 
 .agent-home__intro h1 {
@@ -168,6 +178,114 @@
     font-size: clamp(20px, 2.2vw, 28px);
     font-weight: 650;
     letter-spacing: 0;
+}
+
+.agent-home__first-prompt {
+    width: min(820px, 100%);
+    margin: -10px auto 34px;
+    padding: 18px;
+    background: var(--agent-surface);
+    border: 1px solid #c8d9ee;
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(23, 49, 82, 0.09);
+}
+
+.agent-home__first-prompt label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--agent-navy);
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.agent-home__first-prompt-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.agent-home__first-prompt input {
+    min-width: 0;
+    height: 50px;
+    padding: 0 16px;
+    color: var(--agent-ink);
+    font: 500 15px/1.4 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
+    background: #f9fbfe;
+    border: 1px solid #b8cce5;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.agent-home__first-prompt input:focus {
+    background: #ffffff;
+    border-color: var(--agent-blue);
+    box-shadow: 0 0 0 3px rgba(23, 104, 213, 0.13);
+}
+
+.agent-home__first-prompt input:disabled {
+    color: #78869a;
+    background: #eef2f7;
+    border-color: #d4dce7;
+    cursor: not-allowed;
+}
+
+.agent-home__first-prompt button {
+    display: inline-flex;
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 750;
+    background: var(--agent-blue);
+    border: 1px solid #0f5fca;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.agent-home__first-prompt button:hover,
+.agent-home__first-prompt button:focus-visible {
+    background: #125bbd;
+    box-shadow: 0 7px 18px rgba(23, 104, 213, 0.2);
+    outline: none;
+}
+
+.agent-home__first-prompt button:disabled {
+    color: #e7edf5;
+    background: #8d9caf;
+    border-color: #8d9caf;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.agent-home__first-prompt button svg {
+    width: 17px;
+    height: 17px;
+}
+
+.agent-home__first-prompt-help,
+.agent-home__first-prompt-status {
+    margin: 9px 2px 0;
+    color: var(--agent-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.agent-home__first-prompt-status {
+    min-height: 17px;
+    color: #175da9;
+    font-weight: 700;
+}
+
+.agent-home__first-prompt-status.is-error {
+    color: #a33a31;
 }
 
 .agent-home__section + .agent-home__section {
@@ -432,13 +550,21 @@
 .agent-home__engine {
     display: flex;
     align-items: center;
-    gap: 13px;
+    justify-content: space-between;
+    gap: 20px;
     margin-top: 28px;
     padding: 17px 20px;
     color: #ffffff;
     background: var(--agent-navy);
     border: 1px solid #173c6d;
     border-radius: 8px;
+}
+
+.agent-home__engine-identity {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
 }
 
 .agent-home__engine-mark {
@@ -457,7 +583,7 @@
     height: 21px;
 }
 
-.agent-home__engine > span:last-child {
+.agent-home__engine-copy {
     display: flex;
     flex-direction: column;
 }
@@ -472,33 +598,81 @@
     font-size: 12px;
 }
 
+.agent-home__engine .agent-home__engine-copyright {
+    flex: 0 0 auto;
+    margin-top: 0;
+    color: #d4deeb;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: right;
+    white-space: nowrap;
+}
+
 .agent-home-return {
     position: fixed;
-    top: 12px;
-    left: 14px;
-    z-index: 10001;
+    right: 16px;
+    bottom: 124px;
+    z-index: 10018;
     display: inline-flex;
+    width: 112px;
+    min-width: 112px;
+    height: 48px;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    min-height: 36px;
-    padding: 0 12px;
-    color: var(--agent-navy);
-    font: 700 13px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid #cbd7e6;
-    border-radius: 7px;
-    box-shadow: 0 4px 14px rgba(23, 49, 82, 0.14);
+    padding: 0 21px;
+    color: #ffffff;
+    font: 700 14px/1 Inter, Pretendard, "Noto Sans KR", "Segoe UI", sans-serif;
+    background: #274f83;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    box-shadow: 0 10px 26px rgba(18, 51, 96, 0.24);
     cursor: pointer;
+    transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.agent-home-return:hover {
+    background: #1f436f;
+    box-shadow: 0 13px 30px rgba(18, 51, 96, 0.3);
+    transform: translateY(-1px);
+}
+
+.agent-home-return:focus-visible {
+    outline: 3px solid rgba(53, 111, 202, 0.34);
+    outline-offset: 3px;
 }
 
 .agent-home-return svg {
-    width: 16px;
-    height: 16px;
+    display: block;
+    width: 18px;
+    height: 18px;
 }
 
 body.agent-home-active .site-copyright-registration,
 body.agent-home-active .site-hit-counter {
     display: none;
+}
+
+@media (max-width: 768px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+    .agent-home-return {
+        right: 12px;
+        bottom: 124px;
+        width: 52px;
+        min-width: 52px;
+        height: 52px;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    .agent-home-return__label {
+        display: none;
+    }
+
+    .agent-home-return svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+    }
 }
 
 @media (max-width: 840px) {
@@ -542,6 +716,12 @@ body.agent-home-active .site-hit-counter {
         display: none;
     }
 
+    .agent-home__registration {
+        max-width: 190px;
+        font-size: 10px;
+        line-height: 1.25;
+    }
+
     .agent-home__main {
         width: calc(100% - 24px);
         padding: 32px 0 96px;
@@ -553,7 +733,7 @@ body.agent-home-active .site-hit-counter {
 
     .agent-home__eyebrow {
         margin-bottom: 10px;
-        font-size: 10px;
+        font-size: 11px;
     }
 
     .agent-home__intro h1 {
@@ -563,6 +743,47 @@ body.agent-home-active .site-hit-counter {
     .agent-home__intro p {
         margin-top: 13px;
         font-size: 20px;
+    }
+
+    .agent-home__first-prompt {
+        margin: 0 auto 26px;
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    .agent-home__first-prompt-control {
+        grid-template-columns: minmax(0, 1fr) 48px;
+        gap: 8px;
+    }
+
+    .agent-home__first-prompt input {
+        height: 48px;
+        padding: 0 13px;
+        font-size: 14px;
+    }
+
+    .agent-home__first-prompt button {
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        padding: 0;
+    }
+
+    .agent-home__first-prompt button span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .agent-home__first-prompt-help,
+    .agent-home__first-prompt-status {
+        font-size: 10px;
     }
 
     .agent-home__section-heading > span:last-child:not(:first-child) {
@@ -615,6 +836,8 @@ body.agent-home-active .site-hit-counter {
     }
 
     .agent-home__engine {
+        flex-wrap: wrap;
+        gap: 10px;
         padding: 14px;
     }
 
@@ -626,15 +849,12 @@ body.agent-home-active .site-hit-counter {
         font-size: 11px;
     }
 
-    .agent-home-return span {
-        display: none;
+    .agent-home__engine .agent-home__engine-copyright {
+        width: 100%;
+        font-size: 10px;
+        text-align: right;
     }
 
-    .agent-home-return {
-        width: 38px;
-        justify-content: center;
-        padding: 0;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {

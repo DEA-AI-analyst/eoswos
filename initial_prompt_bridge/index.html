@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EosWos initial prompt bridge</title>
+</head>
+<body>
+<script>
+(() => {
+    "use strict";
+
+    const TYPE_RENDER = "streamlit:render";
+    const TYPE_COMPONENT_READY = "streamlit:componentReady";
+    const TYPE_SET_COMPONENT_VALUE = "streamlit:setComponentValue";
+    const TYPE_SET_FRAME_HEIGHT = "streamlit:setFrameHeight";
+    const TYPE_READY = "READY";
+    const TYPE_INITIAL_PROMPT = "INITIAL_PROMPT";
+    const TYPE_ACK = "ACK";
+    const VERSION = 1;
+    const SOURCE = "agent_home_first_prompt";
+    const MAX_PROMPT_LENGTH = 500;
+    const streamlitUrl = new URLSearchParams(window.location.search).get("streamlitUrl");
+    let streamlitOrigin = "";
+    let parentOrigin = "";
+
+    try {
+        streamlitOrigin = new URL(streamlitUrl).origin;
+    } catch (error) {
+        return;
+    }
+
+    const postToStreamlit = (message) => {
+        window.parent.postMessage(message, streamlitOrigin);
+    };
+
+    const postToAgentHome = (message) => {
+        if (parentOrigin) {
+            window.top.postMessage(message, parentOrigin);
+        }
+    };
+
+    const readyMessage = () => ({
+        type: TYPE_READY,
+        version: VERSION,
+        request_id: null,
+        prompt: null,
+        source: SOURCE,
+    });
+
+    const isExactOrigin = (value) => {
+        try {
+            const parsed = new URL(value);
+            const isLoopback = parsed.hostname === "localhost"
+                || parsed.hostname === "127.0.0.1"
+                || parsed.hostname === "[::1]";
+            return parsed.origin === value && (
+                parsed.protocol === "https:"
+                || (parsed.protocol === "http:" && isLoopback)
+            );
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const isInitialPrompt = (value) => Boolean(
+        value
+        && value.type === TYPE_INITIAL_PROMPT
+        && value.version === VERSION
+        && value.source === SOURCE
+        && typeof value.request_id === "string"
+        && typeof value.prompt === "string"
+        && value.prompt === value.prompt.trim()
+        && value.prompt.length > 0
+        && value.prompt.length <= MAX_PROMPT_LENGTH
+        && (value.attempt === 1 || value.attempt === 2)
+    );
+
+    const handleRender = (event) => {
+        if (
+            event.origin !== streamlitOrigin
+            || event.source !== window.parent
+            || event.data?.type !== TYPE_RENDER
+        ) {
+            return;
+        }
+        const args = event.data.args || {};
+        if (
+            args.version !== VERSION
+            || args.source !== SOURCE
+            || !isExactOrigin(args.parent_origin)
+        ) {
+            parentOrigin = "";
+            return;
+        }
+        parentOrigin = args.parent_origin;
+        postToAgentHome(readyMessage());
+
+        if (
+            typeof args.ack_request_id === "string"
+            && (args.ack_status === "accepted" || args.ack_status === "duplicate")
+        ) {
+            postToAgentHome({
+                type: TYPE_ACK,
+                version: VERSION,
+                request_id: args.ack_request_id,
+                prompt: null,
+                source: SOURCE,
+                status: args.ack_status,
+            });
+        }
+        postToStreamlit({
+            isStreamlitMessage: true,
+            type: TYPE_SET_FRAME_HEIGHT,
+            height: 0,
+        });
+    };
+
+    const handleInitialPrompt = (event) => {
+        if (
+            !parentOrigin
+            || event.origin !== parentOrigin
+            || event.source !== window.top
+            || !isInitialPrompt(event.data)
+        ) {
+            return;
+        }
+        postToStreamlit({
+            isStreamlitMessage: true,
+            type: TYPE_SET_COMPONENT_VALUE,
+            value: event.data,
+            dataType: "json",
+        });
+    };
+
+    window.addEventListener("message", (event) => {
+        handleRender(event);
+        handleInitialPrompt(event);
+    });
+
+    postToStreamlit({
+        isStreamlitMessage: true,
+        type: TYPE_COMPONENT_READY,
+        apiVersion: 1,
+    });
+})();
+</script>
+</body>
+</html>
