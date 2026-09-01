@@ -296,7 +296,7 @@ def _add_price_basis(document: Document, context: Mapping[str, Any]) -> None:
     legend.paragraph_format.space_before = Pt(0)
     legend.paragraph_format.space_after = Pt(0.8)
     _run(legend, "축 열 표기: Grade | Score | Rank", size=BODY_FONT_SIZE, color=MID_GRAY)
-    widths = (1200, 1700, 2726, 2726, 2728)
+    widths = (1157, 1157, 2922, 2922, 2922)
     table = document.add_table(rows=1, cols=5)
     _configure_table(table, widths)
     for index, label in enumerate(("가격기준", "M Grade", "e_M", "p_M", "s_M")):

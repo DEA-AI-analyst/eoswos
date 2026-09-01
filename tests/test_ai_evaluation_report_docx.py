@@ -150,9 +150,11 @@ def test_docx_is_deterministic_a4_report_with_confirmed_values() -> None:
     )
     assert legend.alignment == WD_ALIGN_PARAGRAPH.RIGHT
     price_grid_widths = [int(column.get(qn("w:w"))) for column in price._tbl.tblGrid]
-    assert price_grid_widths == [1200, 1700, 2726, 2726, 2728]
+    assert price_grid_widths == [1157, 1157, 2922, 2922, 2922]
     assert sum(price_grid_widths) == 11080
-    assert max(price_grid_widths[2:]) - min(price_grid_widths[2:]) <= 2
+    assert abs(price_grid_widths[0] * 2.54 / 1440 - 2.04) < 0.001
+    assert abs(price_grid_widths[1] * 2.54 / 1440 - 2.04) < 0.001
+    assert len(set(price_grid_widths[2:])) == 1
     table_width = price._tbl.tblPr.find(qn("w:tblW"))
     assert table_width is not None
     assert table_width.get(qn("w:type")) == "dxa"
