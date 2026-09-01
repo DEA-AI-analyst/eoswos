@@ -1304,10 +1304,9 @@ st.session_state["_api_model_mode"] = health.get("model_mode")
 
 try:
     bridge_value = prompt_bridge.render_agent_home_prompt_bridge(
-        parent_origin=_setting("AGENT_HOME_PARENT_ORIGIN"),
-        deployment_environment=(
-            _setting("AGENT_HOME_DEPLOYMENT_ENVIRONMENT") or "production"
-        ),
+        # Staging-only overlay: exact Netlify parent; exclude from production.
+        parent_origin="https://fabulous-lokum-e4b3f6.netlify.app",
+        deployment_environment="staging",
         ack_request_id=st.session_state.get(
             "_agent_home_first_prompt_ack_request_id"
         ),
