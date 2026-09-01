@@ -257,6 +257,28 @@ test("matching ACK clears pending while wrong ACK is ignored", () => {
 });
 
 
+test("a second request after ACK reuses the validated ready bridge", () => {
+    const clock = fakeClock();
+    const sends = [];
+    const controller = contract.createDeliveryController({
+        send: (target, payload) => sends.push({ target, payload }),
+        schedule: (callback) => clock.schedule(callback),
+        cancel: (id) => clock.cancel(id),
+    });
+    controller.markReady("bridge-a");
+    controller.queue(contract.createInitialPromptEnvelope("request-1", "첫 질문"));
+    assert.equal(controller.acknowledge("request-1"), true);
+
+    assert.equal(
+        controller.queue(contract.createInitialPromptEnvelope("request-2", "두 번째 질문")),
+        true,
+    );
+    assert.equal(sends.length, 2);
+    assert.equal(sends[1].target, "bridge-a");
+    assert.equal(sends[1].payload.request_id, "request-2");
+    assert.equal(sends[1].payload.attempt, 1);
+});
+
 test("iframe reload after ACK never resends", () => {
     const clock = fakeClock();
     let sends = 0;
