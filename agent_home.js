@@ -173,6 +173,7 @@
 
         let readySource = "";
         let loadingSettleTimer = null;
+        let frameRouteInvalidated = false;
 
         const setFrameLoading = (isLoading) => {
             frameLoading.hidden = !isLoading;
@@ -197,7 +198,10 @@
             return url.toString();
         };
 
-        const showHome = ({ updateHistory = true } = {}) => {
+        const showHome = ({
+            updateHistory = true,
+            invalidateFrameRoute = true,
+        } = {}) => {
             home.hidden = false;
             frameWrap.hidden = true;
             frameWrap.setAttribute("aria-hidden", "true");
@@ -205,6 +209,15 @@
             returnButton.hidden = true;
             document.body.classList.add("agent-home-active");
             document.body.classList.remove("mcore-active");
+
+            // M-CORE can change its active view without changing the iframe's
+            // src attribute. The parent cannot inspect cross-origin child state,
+            // so frame.src may still look like the previously requested route.
+            // Force the next Home-card selection to navigate explicitly.
+            if (invalidateFrameRoute) {
+                readySource = "";
+                frameRouteInvalidated = true;
+            }
 
             if (updateHistory) {
                 window.history.pushState(
@@ -218,8 +231,10 @@
         const showMcore = (route, { updateHistory = true } = {}) => {
             const safeRoute = normalizeRoute(route);
             const targetSource = buildMcoreUrl(safeRoute);
+            const shouldNavigate = frameRouteInvalidated || frame.src !== targetSource;
+            frameRouteInvalidated = false;
 
-            if (frame.src !== targetSource) {
+            if (shouldNavigate) {
                 readySource = "";
                 setFrameLoading(true);
                 frame.src = targetSource;
@@ -262,7 +277,7 @@
             showHome({ updateHistory: false });
         });
 
-        showHome({ updateHistory: false });
+        showHome({ updateHistory: false, invalidateFrameRoute: false });
         window.history.replaceState({ surface: "home" }, "", "#home");
     };
 

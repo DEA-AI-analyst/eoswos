@@ -103,3 +103,13 @@ def test_navigation_preserves_home_return_and_browser_history() -> None:
     assert 'window.history.replaceState({ surface: "home" }, "", "#home")' in HOME_JS
     assert "frameWrap.hidden = false" in HOME_JS
     assert "frameWrap.hidden = true" in HOME_JS
+
+
+def test_home_return_invalidates_cross_origin_mcore_route_before_reopen() -> None:
+    assert "let frameRouteInvalidated = false" in HOME_JS
+    assert "invalidateFrameRoute = true" in HOME_JS
+    assert "frameRouteInvalidated = true" in HOME_JS
+    assert "frameRouteInvalidated || frame.src !== targetSource" in HOME_JS
+    assert "frameRouteInvalidated = false" in HOME_JS
+    assert "showHome({ updateHistory: false, invalidateFrameRoute: false })" in HOME_JS
+    assert "agent_home.js?v=20260908-route-reset" in INDEX

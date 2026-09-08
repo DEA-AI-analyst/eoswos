@@ -377,3 +377,41 @@ def test_existing_five_agent_home_routes_remain_available(driver) -> None:
         WebDriverWait(driver, 10).until(
             lambda _driver: driver.find_element(By.ID, "agent-home").is_displayed()
         )
+
+
+def test_home_return_forces_same_route_navigation_after_child_state_change(driver) -> None:
+    _open_new_tab(driver)
+    frame = driver.find_element(By.ID, "mcore-frame")
+    driver.execute_script(
+        """
+        window.__eoswosMcoreLoadCount = 0;
+        arguments[0].addEventListener("load", () => {
+            window.__eoswosMcoreLoadCount += 1;
+        });
+        arguments[0].dataset.baseSrc = "about:blank?embed=true&view=overview";
+        arguments[0].src = arguments[0].dataset.baseSrc;
+        """,
+        frame,
+    )
+    WebDriverWait(driver, 10).until(
+        lambda _driver: driver.execute_script(
+            "return window.__eoswosMcoreLoadCount;"
+        ) >= 1
+    )
+
+    driver.find_element(By.CSS_SELECTOR, '[data-mcore-route="overview"]').click()
+    driver.find_element(By.ID, "agent-home-return").click()
+    WebDriverWait(driver, 10).until(
+        lambda _driver: driver.find_element(By.ID, "agent-home").is_displayed()
+    )
+
+    load_count_before_reopen = driver.execute_script(
+        "return window.__eoswosMcoreLoadCount;"
+    )
+    driver.find_element(By.CSS_SELECTOR, '[data-mcore-route="overview"]').click()
+    WebDriverWait(driver, 10).until(
+        lambda _driver: driver.execute_script(
+            "return window.__eoswosMcoreLoadCount;"
+        ) > load_count_before_reopen
+    )
+    assert "view=overview" in frame.get_attribute("src")
