@@ -1,0 +1,100 @@
+from __future__ import annotations
+
+import hashlib
+import re
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+HTML = (ROOT / "index.html").read_text(encoding="utf-8")
+HOME_CSS = (ROOT / "agent_home.css").read_text(encoding="utf-8")
+HOME_JS = (ROOT / "agent_home.js").read_text(encoding="utf-8")
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+
+
+def _css_block(selector: str) -> str:
+    return HOME_CSS.split(f"{selector} {{", 1)[1].split("}", 1)[0]
+
+
+def test_supplied_promo_assets_are_preserved_exactly() -> None:
+    image = ROOT / "assets" / "EosWos_Promo_Button.png"
+    video = ROOT / "assets" / "EosWos_Demo.mp4"
+
+    assert image.stat().st_size == 104_208
+    assert video.stat().st_size == 12_008_438
+    assert _sha256(image) == "BF2EE8AE62187FF2966296EF39539BCB7D888E5E36808DBE97BF2883B9491C0A"
+    assert _sha256(video) == "189BC695B1817444480CEE8AAC5672909679047731BCF7108FCC27468277D6BD"
+
+
+def test_promo_button_is_inside_the_home_prompt_card() -> None:
+    home_start = HTML.index('<section class="agent-home"')
+    home_end = HTML.index('<button class="agent-home-return"', home_start)
+    home = HTML[home_start:home_end]
+    prompt_start = home.index('<section class="agent-home__first-prompt"')
+    prompt_end = home.index("</section>", prompt_start)
+    prompt = home[prompt_start:prompt_end]
+
+    assert 'id="agent-home-promo-trigger"' in prompt
+    assert 'aria-label="EosWos 홍보영상 재생"' in prompt
+    assert 'src="./assets/EosWos_Promo_Button.png"' in prompt
+    assert "data-mcore-route" not in prompt
+    assert HTML.count('id="agent-home-promo-trigger"') == 1
+
+
+def test_outer_card_and_input_heights_remain_the_release_values() -> None:
+    card = _css_block(".agent-home__first-prompt")
+    input_style = _css_block(".agent-home__first-prompt input")
+    submit = _css_block(".agent-home__first-prompt-submit")
+
+    assert "width: min(820px, 100%);" in card
+    assert "margin: -10px auto 34px;" in card
+    assert "padding: 18px;" in card
+    assert "border: 1px solid #c8d9ee;" in card
+    assert "border-radius: 14px;" in card
+    assert "height:" not in card
+    assert "height: 50px;" in input_style
+    assert "width: 50px;" in submit
+    assert "min-width: 50px;" in submit
+    assert "height: 50px;" in submit
+
+
+def test_only_the_prompt_width_is_reallocated_for_the_promo_image() -> None:
+    layout = _css_block(".agent-home__first-prompt-layout")
+    trigger = _css_block(".agent-home__promo-trigger")
+    image = _css_block(".agent-home__promo-trigger img")
+
+    assert "grid-template-columns: minmax(0, 1fr) 1px 130px;" in layout
+    assert "width: 130px;" in trigger
+    assert "height: 50px;" in trigger
+    assert "object-fit: contain;" in image
+    assert "transform: scale(1.02);" in HOME_CSS
+
+
+def test_modal_uses_the_supplied_video_and_required_controls() -> None:
+    modal = HTML.split('id="agent-home-promo-modal"', 1)[1].split("</dialog>", 1)[0]
+
+    assert 'id="agent-home-promo-video"' in modal
+    assert "controls" in modal
+    assert "playsinline" in modal
+    assert 'preload="metadata"' in modal
+    assert 'src="./assets/EosWos_Demo.mp4"' in modal
+    assert 'aria-label="홍보영상 닫기"' in modal
+    assert ".agent-home__promo-modal::backdrop" in HOME_CSS
+
+
+def test_modal_close_pauses_resets_and_handles_escape() -> None:
+    assert "modal.showModal()" in HOME_JS
+    assert "video.play()" in HOME_JS
+    assert "video.pause()" in HOME_JS
+    assert "video.currentTime = 0" in HOME_JS
+    assert 'event.key !== "Escape" || !modal.open' in HOME_JS
+    assert "event.stopImmediatePropagation()" in HOME_JS
+    assert "trigger.setAttribute(\"aria-expanded\", \"false\")" in HOME_JS
+
+
+def test_existing_home_routes_are_unchanged() -> None:
+    routes = re.findall(r'data-mcore-route="([^"]+)"', HTML)
+    assert routes == ["new_evaluation", "monitoring", "overview", "dea", "ml"]

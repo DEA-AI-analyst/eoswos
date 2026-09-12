@@ -149,6 +149,68 @@
         syncInputState();
     };
 
+    const initializePromoVideo = () => {
+        const trigger = document.getElementById("agent-home-promo-trigger");
+        const modal = document.getElementById("agent-home-promo-modal");
+        const closeButton = document.getElementById("agent-home-promo-close");
+        const video = document.getElementById("agent-home-promo-video");
+        if (!trigger || !modal || !closeButton || !video || typeof modal.showModal !== "function") {
+            return;
+        }
+
+        let returnFocus = null;
+
+        const resetVideo = () => {
+            video.pause();
+            try {
+                video.currentTime = 0;
+            } catch (error) {
+                // Metadata may not be available yet; pause is still applied.
+            }
+        };
+
+        const closeModal = () => {
+            if (!modal.open) {
+                return;
+            }
+            resetVideo();
+            modal.close();
+            trigger.setAttribute("aria-expanded", "false");
+            if (returnFocus instanceof HTMLElement && returnFocus.isConnected) {
+                returnFocus.focus();
+            }
+            returnFocus = null;
+        };
+
+        trigger.addEventListener("click", () => {
+            if (modal.open) {
+                return;
+            }
+            returnFocus = document.activeElement;
+            modal.showModal();
+            trigger.setAttribute("aria-expanded", "true");
+            closeButton.focus();
+            const playback = video.play();
+            if (playback && typeof playback.catch === "function") {
+                playback.catch(() => {});
+            }
+        });
+
+        closeButton.addEventListener("click", closeModal);
+        modal.addEventListener("cancel", (event) => {
+            event.preventDefault();
+            closeModal();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || !modal.open) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeModal();
+        });
+    };
+
     const renderIcons = () => {
         if (window.lucide && typeof window.lucide.createIcons === "function") {
             window.lucide.createIcons({
@@ -284,6 +346,7 @@
     const initialize = () => {
         renderIcons();
         initializeFirstPrompt();
+        initializePromoVideo();
         initializeAgentHome();
     };
 

@@ -24,11 +24,11 @@
 
     <meta name="naver-site-verification" content="ccad66f9c69093825b52c06ba44f369b1f2e4f2b" />
 
-    <link rel="stylesheet" href="./agent_home.css?v=20260901-primary-card-spacing" />
+    <link rel="stylesheet" href="./agent_home.css?v=20260912-promo-video" />
     <link rel="stylesheet" href="./ai_widget.css?v=20260828-agent-home-polish" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="./agent_home_first_prompt.js?v=20260831-first-prompt" defer></script>
-    <script src="./agent_home.js?v=20260908-route-reset" defer></script>
+    <script src="./agent_home.js?v=20260912-promo-video" defer></script>
     <script src="./ai_widget.js?v=20260901-panel-state" defer></script>
 
     <style>
@@ -158,17 +158,29 @@
                     <label id="agent-home-first-prompt-title" for="agent-home-first-prompt-input">
                         🏠 Agent Home
                     </label>
-                    <div class="agent-home__first-prompt-control">
-                        <input
-                            id="agent-home-first-prompt-input"
-                            type="text"
-                            maxlength="500"
-                            autocomplete="off"
-                            autocapitalize="off"
-                            spellcheck="false"
-                            placeholder="대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." />
-                        <button id="agent-home-first-prompt-submit" type="submit" aria-label="질문 보내기" title="질문 보내기">
-                            <i data-lucide="send-horizontal" aria-hidden="true"></i>
+                    <div class="agent-home__first-prompt-layout">
+                        <div class="agent-home__first-prompt-control">
+                            <input
+                                id="agent-home-first-prompt-input"
+                                type="text"
+                                maxlength="500"
+                                autocomplete="off"
+                                autocapitalize="off"
+                                spellcheck="false"
+                                placeholder="대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." />
+                            <button class="agent-home__first-prompt-submit" id="agent-home-first-prompt-submit" type="submit" aria-label="질문 보내기" title="질문 보내기">
+                                <i data-lucide="send-horizontal" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <span class="agent-home__promo-divider" aria-hidden="true"></span>
+                        <button
+                            class="agent-home__promo-trigger"
+                            id="agent-home-promo-trigger"
+                            type="button"
+                            aria-label="EosWos 홍보영상 재생"
+                            aria-controls="agent-home-promo-modal"
+                            aria-expanded="false">
+                            <img src="./assets/EosWos_Promo_Button.png" alt="" draggable="false" />
                         </button>
                     </div>
                     <p id="agent-home-first-prompt-status" role="status" aria-live="polite" hidden></p>
@@ -237,6 +249,30 @@
                 <small class="agent-home__engine-copyright">Copyright 2026. All rights reserved.</small>
             </footer>
         </main>
+
+        <dialog
+            class="agent-home__promo-modal"
+            id="agent-home-promo-modal"
+            aria-label="EosWos 홍보영상">
+            <div class="agent-home__promo-player">
+                <button
+                    class="agent-home__promo-close"
+                    id="agent-home-promo-close"
+                    type="button"
+                    aria-label="홍보영상 닫기">
+                    <i data-lucide="x" aria-hidden="true"></i>
+                </button>
+                <video
+                    id="agent-home-promo-video"
+                    controls
+                    playsinline
+                    preload="metadata"
+                    aria-label="EosWos 홍보영상 플레이어">
+                    <source src="./assets/EosWos_Demo.mp4" type="video/mp4" />
+                    브라우저가 영상 재생을 지원하지 않습니다.
+                </video>
+            </div>
+        </dialog>
     </section>
 
     <button class="agent-home-return" id="agent-home-return" type="button" aria-label="Agent Home으로 이동" hidden>
