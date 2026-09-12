@@ -17,12 +17,22 @@
     const TYPE_READY = "READY";
     const TYPE_INITIAL_PROMPT = "INITIAL_PROMPT";
     const TYPE_ACK = "ACK";
+    const TYPE_PROMO_HOST_READY = "PROMO_HOST_READY";
+    const TYPE_OPEN_PROMO_VIDEO = "OPEN_PROMO_VIDEO";
+    const TYPE_PROMO_VIDEO_ACK = "PROMO_VIDEO_ACK";
     const VERSION = 1;
     const SOURCE = "agent_home_first_prompt";
+    const PROMO_SOURCE = "eagent_promo_video";
     const MAX_PROMPT_LENGTH = 500;
+    const PROMO_ACK_TIMEOUT_MS = 700;
     const streamlitUrl = new URLSearchParams(window.location.search).get("streamlitUrl");
     let streamlitOrigin = "";
     let parentOrigin = "";
+    let promoHostReady = false;
+    let promoNativeBypass = false;
+    let pendingPromoRequest = null;
+    let promoAckTimer = null;
+    let streamlitDocument = null;
 
     try {
         streamlitOrigin = new URL(streamlitUrl).origin;
@@ -76,6 +86,154 @@
         && (value.attempt === 1 || value.attempt === 2)
     );
 
+    const isCanonicalRequestId = (value) => (
+        typeof value === "string"
+        && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    );
+
+    const hasOnlyFields = (value, fields) => {
+        const keys = Object.keys(value);
+        return keys.length === fields.length && keys.every((key) => fields.includes(key));
+    };
+
+    const isPromoHostReady = (value) => Boolean(
+        value
+        && hasOnlyFields(
+            value,
+            ["type", "version", "request_id", "prompt", "source", "status"],
+        )
+        && value.type === TYPE_PROMO_HOST_READY
+        && value.version === VERSION
+        && value.request_id === null
+        && value.prompt === null
+        && value.source === PROMO_SOURCE
+        && value.status === "ready"
+    );
+
+    const isPromoVideoAck = (value) => Boolean(
+        value
+        && hasOnlyFields(
+            value,
+            ["type", "version", "request_id", "prompt", "source", "status"],
+        )
+        && value.type === TYPE_PROMO_VIDEO_ACK
+        && value.version === VERSION
+        && isCanonicalRequestId(value.request_id)
+        && value.prompt === null
+        && value.source === PROMO_SOURCE
+        && (value.status === "opened" || value.status === "duplicate")
+    );
+
+    const createPromoRequestId = () => {
+        if (!window.crypto || typeof window.crypto.randomUUID !== "function") {
+            return "";
+        }
+        const requestId = window.crypto.randomUUID();
+        return isCanonicalRequestId(requestId) ? requestId : "";
+    };
+
+    const clearPromoAckTimer = () => {
+        if (promoAckTimer !== null) {
+            window.clearTimeout(promoAckTimer);
+            promoAckTimer = null;
+        }
+    };
+
+    const openNativePromoFallback = () => {
+        const button = pendingPromoRequest?.button;
+        clearPromoAckTimer();
+        pendingPromoRequest = null;
+        promoHostReady = false;
+        if (!button || !button.isConnected) {
+            return;
+        }
+        promoNativeBypass = true;
+        try {
+            button.click();
+        } finally {
+            promoNativeBypass = false;
+        }
+    };
+
+    const finishPromoRequest = () => {
+        clearPromoAckTimer();
+        pendingPromoRequest = null;
+    };
+
+    const sendPromoOpenRequest = () => {
+        if (!pendingPromoRequest || !promoHostReady || !parentOrigin) {
+            return;
+        }
+        pendingPromoRequest.attempt += 1;
+        postToAgentHome({
+            type: TYPE_OPEN_PROMO_VIDEO,
+            version: VERSION,
+            request_id: pendingPromoRequest.requestId,
+            prompt: null,
+            source: PROMO_SOURCE,
+            attempt: pendingPromoRequest.attempt,
+        });
+        clearPromoAckTimer();
+        promoAckTimer = window.setTimeout(() => {
+            if (pendingPromoRequest?.attempt === 1) {
+                sendPromoOpenRequest();
+                return;
+            }
+            // The parent may already be playing the video while both ACKs were
+            // lost. Do not open a second native dialog in that ambiguity.
+            finishPromoRequest();
+        }, PROMO_ACK_TIMEOUT_MS);
+    };
+
+    const handlePromoClick = (event) => {
+        const target = event.target;
+        const button = target && typeof target.closest === "function"
+            ? target.closest(".st-key-eagent_promo_trigger button")
+            : null;
+        if (!button || promoNativeBypass) {
+            return;
+        }
+        if (pendingPromoRequest) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            return;
+        }
+        const requestId = createPromoRequestId();
+        if (!requestId) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        pendingPromoRequest = {
+            requestId: requestId,
+            attempt: 0,
+            button: button,
+        };
+        if (promoHostReady) {
+            sendPromoOpenRequest();
+            return;
+        }
+        promoAckTimer = window.setTimeout(() => {
+            if (pendingPromoRequest?.attempt === 0) {
+                openNativePromoFallback();
+            }
+        }, PROMO_ACK_TIMEOUT_MS);
+    };
+
+    const installPromoClickBridge = () => {
+        if (streamlitDocument) {
+            return;
+        }
+        try {
+            streamlitDocument = window.parent.document;
+            streamlitDocument.addEventListener("click", handlePromoClick, true);
+        } catch (error) {
+            streamlitDocument = null;
+        }
+    };
+
     const handleRender = (event) => {
         if (
             event.origin !== streamlitOrigin
@@ -91,9 +249,11 @@
             || !isExactOrigin(args.parent_origin)
         ) {
             parentOrigin = "";
+            promoHostReady = false;
             return;
         }
         parentOrigin = args.parent_origin;
+        installPromoClickBridge();
         postToAgentHome(readyMessage());
 
         if (
@@ -133,10 +293,48 @@
         });
     };
 
+    const handlePromoHostMessage = (event) => {
+        if (
+            !parentOrigin
+            || event.origin !== parentOrigin
+            || event.source !== window.top
+        ) {
+            return;
+        }
+        if (isPromoHostReady(event.data)) {
+            promoHostReady = true;
+            if (pendingPromoRequest?.attempt === 0) {
+                clearPromoAckTimer();
+                sendPromoOpenRequest();
+            }
+            return;
+        }
+        if (
+            pendingPromoRequest
+            && isPromoVideoAck(event.data)
+            && event.data.request_id === pendingPromoRequest.requestId
+        ) {
+            clearPromoAckTimer();
+            pendingPromoRequest = null;
+        }
+    };
+
+    const cleanupPromoBridge = () => {
+        clearPromoAckTimer();
+        pendingPromoRequest = null;
+        promoHostReady = false;
+        if (streamlitDocument) {
+            streamlitDocument.removeEventListener("click", handlePromoClick, true);
+            streamlitDocument = null;
+        }
+    };
+
     window.addEventListener("message", (event) => {
         handleRender(event);
         handleInitialPrompt(event);
+        handlePromoHostMessage(event);
     });
+    window.addEventListener("pagehide", cleanupPromoBridge, { once: true });
 
     postToStreamlit({
         isStreamlitMessage: true,

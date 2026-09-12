@@ -105,6 +105,8 @@ def test_only_the_prompt_width_is_reallocated_for_the_promo_image() -> None:
 def test_modal_uses_the_supplied_video_and_required_controls() -> None:
     modal = HTML.split('id="agent-home-promo-modal"', 1)[1].split("</dialog>", 1)[0]
 
+    assert 'aria-labelledby="agent-home-promo-title"' in HTML
+    assert 'id="agent-home-promo-title">EosWos 홍보영상</h2>' in modal
     assert 'id="agent-home-promo-video"' in modal
     assert "controls" in modal
     assert "playsinline" in modal
@@ -112,6 +114,18 @@ def test_modal_uses_the_supplied_video_and_required_controls() -> None:
     assert 'src="./assets/EosWos_Demo.mp4"' in modal
     assert 'aria-label="홍보영상 닫기"' in modal
     assert ".agent-home__promo-modal::backdrop" in HOME_CSS
+    assert 'font-size: var(--promo-title-size, 1.35rem);' in _css_block(
+        ".agent-home__promo-title"
+    )
+
+
+def test_modal_is_global_so_the_embedded_eagent_can_open_it() -> None:
+    home_close = HTML.index(
+        '</section>\n\n    <dialog\n        class="agent-home__promo-modal"'
+    )
+    modal_start = HTML.index('id="agent-home-promo-modal"')
+
+    assert modal_start > home_close
 
 
 def test_modal_is_larger_on_desktop_and_keeps_the_mobile_fit_rule() -> None:
@@ -130,6 +144,10 @@ def test_modal_close_pauses_resets_and_handles_escape() -> None:
     assert 'event.key !== "Escape" || !modal.open' in HOME_JS
     assert "event.stopImmediatePropagation()" in HOME_JS
     assert "trigger.setAttribute(\"aria-expanded\", \"false\")" in HOME_JS
+    assert "window.EoswosPromoVideo = Object.freeze" in HOME_JS
+    assert "open: promoVideo.open" in HOME_JS
+    assert "focusTarget instanceof HTMLIFrameElement" in HOME_JS
+    assert 'frameWidth <= 520 ? "1.2rem" : "1.35rem"' in HOME_JS
 
 
 def test_leaving_home_closes_and_resets_an_open_promo_video() -> None:
@@ -139,8 +157,8 @@ def test_leaving_home_closes_and_resets_an_open_promo_video() -> None:
     )[0]
 
     assert "closePromoVideo();" in show_mcore
-    assert "const closePromoVideo = initializePromoVideo();" in HOME_JS
-    assert "initializeAgentHome(closePromoVideo);" in HOME_JS
+    assert "const promoVideo = initializePromoVideo();" in HOME_JS
+    assert "initializeAgentHome(promoVideo.close);" in HOME_JS
 
 
 def test_existing_home_routes_are_unchanged() -> None:

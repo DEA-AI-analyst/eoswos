@@ -125,6 +125,34 @@ def test_application_bridge_uses_exact_postmessage_origins() -> None:
     assert "current === frame.contentWindow" in widget
     assert "depth < 5" in widget
     assert "parent === current" in widget
+    assert 'type: TYPE_PROMO_HOST_READY' in widget
+    assert 'type: TYPE_OPEN_PROMO_VIDEO' in component
+    assert 'type: TYPE_PROMO_VIDEO_ACK' in widget
+    assert 'target.postMessage({' in widget
+    assert '}, childOrigin);' in widget
+    assert "window.top.postMessage(message, parentOrigin)" in component
+
+
+def test_promo_bridge_is_strict_deduplicated_and_has_native_fallback() -> None:
+    component = (ROOT / "initial_prompt_bridge" / "index.html").read_text(encoding="utf-8")
+    widget = (ROOT / "ai_widget.js").read_text(encoding="utf-8")
+
+    assert 'event.origin !== parentOrigin' in component
+    assert 'event.source !== window.top' in component
+    assert 'event.origin !== childOrigin' in widget
+    assert 'event.source !== bridgeSource' in widget
+    assert 'value.prompt === null' in component
+    assert 'value.prompt === null' in widget
+    assert 'pendingPromoRequest?.attempt === 1' in component
+    assert 'button.click();' in component
+    assert 'promoNativeBypass = true;' in component
+    assert 'consumedPromoRequestIds.includes(event.data.request_id)' in widget
+    assert 'MAX_PROMO_REQUEST_IDS = 32' in widget
+    assert 'window.EoswosPromoVideo?.open(frame) === true' in widget
+    assert 'The parent may already be playing the video' in component
+    assert 'pendingPromoRequest?.attempt === 0' in component
+    assert 'postMessage(message, "*")' not in component
+    assert 'postMessage(payload, "*")' not in widget
 
 
 def test_component_allows_http_only_for_exact_loopback_e2e_origins() -> None:

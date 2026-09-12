@@ -209,6 +209,9 @@ st.markdown(
             scrollbar-gutter: stable both-edges;
             box-sizing: border-box;
         }
+        body:has([data-testid="stToolbar"]) .block-container {
+            padding-top: 2rem;
+        }
         .block-container::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -364,6 +367,7 @@ st.markdown(
             font-size: 0.78rem;
             font-weight: 600;
             line-height: 1.35;
+            white-space: nowrap;
         }
         .result-summary div { min-width: 0; }
         .result-summary span {
@@ -477,7 +481,7 @@ st.markdown(
             position: relative;
             min-height: 4.25rem;
             margin-bottom: 0.55rem;
-            padding-right: calc(5.4rem + 138px);
+            padding-right: 138px;
             box-sizing: border-box;
         }}
         .st-key-eagent_promo_header
@@ -486,7 +490,7 @@ st.markdown(
         }}
         .st-key-eagent_promo_trigger {{
             position: absolute !important;
-            right: 5.4rem;
+            right: 0;
             bottom: -0.65rem;
             width: 130px !important;
             z-index: 2;
@@ -520,13 +524,18 @@ st.markdown(
             outline: 3px solid rgba(47, 119, 207, 0.35) !important;
             outline-offset: 2px !important;
         }}
+        [data-testid="stDialog"]:has(video)
+        [data-testid="stMarkdownContainer"] p {{
+            font-size: 1.35rem !important;
+            line-height: 1.35 !important;
+        }}
         @media (max-width: 520px) {{
             .st-key-eagent_promo_header {{
                 min-height: 4rem;
-                padding-right: calc(4.6rem + 96px);
+                padding-right: 96px;
             }}
             .st-key-eagent_promo_trigger {{
-                right: 4.6rem;
+                right: 0;
                 width: 88px !important;
             }}
             .st-key-eagent_promo_trigger button {{
@@ -534,6 +543,10 @@ st.markdown(
                 min-width: 88px !important;
                 height: 34px !important;
                 min-height: 34px !important;
+            }}
+            [data-testid="stDialog"]:has(video)
+            [data-testid="stMarkdownContainer"] p {{
+                font-size: 1.2rem !important;
             }}
         }}
         @media (prefers-reduced-motion: reduce) {{

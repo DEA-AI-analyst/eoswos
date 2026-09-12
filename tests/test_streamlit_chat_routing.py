@@ -610,14 +610,16 @@ def test_ai_panel_header_uses_normal_flow_and_reserves_control_space() -> None:
     assert "position: sticky !important;" not in source
     assert "margin-bottom: 0.55rem;" in source
     assert ".chat-panel-header" in source
-    assert "padding-right: calc(5.4rem + 138px);" in source
+    assert "padding-right: 138px;" in source
     assert 'with st.container(key="eagent_promo_header"):' in source
     assert 'key="eagent_promo_trigger"' in source
     assert "bottom: -0.65rem;" in source
-    assert "right: 5.4rem;" in source
+    assert "right: 0;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
     assert "안녕하세요. EosWos AI Agent입니다. 무엇을 도와드릴까요?" in source
     assert "padding-bottom: 0;" in source
+    assert 'body:has([data-testid="stToolbar"]) .block-container {' in source
+    assert "padding-top: 2rem;" in source
     assert source.count('class="chat-panel-header"') == 1
 
 

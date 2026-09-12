@@ -9,6 +9,12 @@
     const MIN_PANEL_HEIGHT = 420;
     const PANEL_HORIZONTAL_GAP = 32;
     const PANEL_VERTICAL_GAP = 160;
+    const PROMO_VERSION = 1;
+    const PROMO_SOURCE = "eagent_promo_video";
+    const TYPE_PROMO_HOST_READY = "PROMO_HOST_READY";
+    const TYPE_OPEN_PROMO_VIDEO = "OPEN_PROMO_VIDEO";
+    const TYPE_PROMO_VIDEO_ACK = "PROMO_VIDEO_ACK";
+    const MAX_PROMO_REQUEST_IDS = 32;
     const promptContract = window.EoswosFirstPromptContract;
 
     const panel = document.createElement("section");
@@ -67,6 +73,7 @@
     let preferredPanelSize = readPreferredPanelSize();
     let activeResize = null;
     let bridgeSource = null;
+    const consumedPromoRequestIds = [];
 
     const childOrigin = (() => {
         try {
@@ -346,6 +353,61 @@
         }
     }
 
+    function isCanonicalRequestId(value) {
+        return typeof value === "string"
+            && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    }
+
+    function hasOnlyFields(value, fields) {
+        const keys = Object.keys(value);
+        return keys.length === fields.length && keys.every((key) => fields.includes(key));
+    }
+
+    function isOpenPromoVideoMessage(value) {
+        return Boolean(
+            value
+            && hasOnlyFields(
+                value,
+                ["type", "version", "request_id", "prompt", "source", "attempt"],
+            )
+            && value.type === TYPE_OPEN_PROMO_VIDEO
+            && value.version === PROMO_VERSION
+            && value.source === PROMO_SOURCE
+            && isCanonicalRequestId(value.request_id)
+            && value.prompt === null
+            && (value.attempt === 1 || value.attempt === 2)
+        );
+    }
+
+    function postPromoHostReady(target) {
+        target.postMessage({
+            type: TYPE_PROMO_HOST_READY,
+            version: PROMO_VERSION,
+            request_id: null,
+            prompt: null,
+            source: PROMO_SOURCE,
+            status: "ready",
+        }, childOrigin);
+    }
+
+    function acknowledgePromoVideo(target, requestId, status) {
+        target.postMessage({
+            type: TYPE_PROMO_VIDEO_ACK,
+            version: PROMO_VERSION,
+            request_id: requestId,
+            prompt: null,
+            source: PROMO_SOURCE,
+            status: status,
+        }, childOrigin);
+    }
+
+    function rememberPromoRequestId(requestId) {
+        consumedPromoRequestIds.push(requestId);
+        if (consumedPromoRequestIds.length > MAX_PROMO_REQUEST_IDS) {
+            consumedPromoRequestIds.shift();
+        }
+    }
+
     window.addEventListener("message", function (event) {
         if (!promptContract || !deliveryController || event.origin !== childOrigin) {
             return;
@@ -356,9 +418,26 @@
             }
             bridgeSource = event.source;
             deliveryController.markReady(bridgeSource);
+            postPromoHostReady(bridgeSource);
             return;
         }
         if (!bridgeSource || event.source !== bridgeSource) {
+            return;
+        }
+        if (isOpenPromoVideoMessage(event.data)) {
+            const isNewRequest = !consumedPromoRequestIds.includes(event.data.request_id);
+            if (isNewRequest) {
+                const opened = window.EoswosPromoVideo?.open(frame) === true;
+                if (!opened) {
+                    return;
+                }
+                rememberPromoRequestId(event.data.request_id);
+            }
+            acknowledgePromoVideo(
+                bridgeSource,
+                event.data.request_id,
+                isNewRequest ? "opened" : "duplicate",
+            );
             return;
         }
         const pendingRequestId = event.data?.request_id;

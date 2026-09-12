@@ -24,12 +24,12 @@
 
     <meta name="naver-site-verification" content="ccad66f9c69093825b52c06ba44f369b1f2e4f2b" />
 
-    <link rel="stylesheet" href="./agent_home.css?v=20260912-prompt-marquee" />
+    <link rel="stylesheet" href="./agent_home.css?v=20260913-promo-parent-modal" />
     <link rel="stylesheet" href="./ai_widget.css?v=20260828-agent-home-polish" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="./agent_home_first_prompt.js?v=20260831-first-prompt" defer></script>
-    <script src="./agent_home.js?v=20260912-promo-video-white" defer></script>
-    <script src="./ai_widget.js?v=20260901-panel-state" defer></script>
+    <script src="./agent_home.js?v=20260913-promo-parent-modal" defer></script>
+    <script src="./ai_widget.js?v=20260913-promo-parent-modal" defer></script>
 
     <style>
         :root {
@@ -266,30 +266,32 @@
             </footer>
         </main>
 
-        <dialog
-            class="agent-home__promo-modal"
-            id="agent-home-promo-modal"
-            aria-label="EosWos 홍보영상">
-            <div class="agent-home__promo-player">
-                <button
-                    class="agent-home__promo-close"
-                    id="agent-home-promo-close"
-                    type="button"
-                    aria-label="홍보영상 닫기">
-                    <i data-lucide="x" aria-hidden="true"></i>
-                </button>
-                <video
-                    id="agent-home-promo-video"
-                    controls
-                    playsinline
-                    preload="metadata"
-                    aria-label="EosWos 홍보영상 플레이어">
-                    <source src="./assets/EosWos_Demo.mp4" type="video/mp4" />
-                    브라우저가 영상 재생을 지원하지 않습니다.
-                </video>
-            </div>
-        </dialog>
     </section>
+
+    <dialog
+        class="agent-home__promo-modal"
+        id="agent-home-promo-modal"
+        aria-labelledby="agent-home-promo-title">
+        <div class="agent-home__promo-player">
+            <button
+                class="agent-home__promo-close"
+                id="agent-home-promo-close"
+                type="button"
+                aria-label="홍보영상 닫기">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+            <h2 class="agent-home__promo-title" id="agent-home-promo-title">EosWos 홍보영상</h2>
+            <video
+                id="agent-home-promo-video"
+                controls
+                playsinline
+                preload="metadata"
+                aria-label="EosWos 홍보영상 플레이어">
+                <source src="./assets/EosWos_Demo.mp4" type="video/mp4" />
+                브라우저가 영상 재생을 지원하지 않습니다.
+            </video>
+        </div>
+    </dialog>
 
     <button class="agent-home-return" id="agent-home-return" type="button" aria-label="Agent Home으로 이동" hidden>
         <i data-lucide="house" aria-hidden="true"></i>

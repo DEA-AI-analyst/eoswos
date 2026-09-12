@@ -155,7 +155,10 @@
         const closeButton = document.getElementById("agent-home-promo-close");
         const video = document.getElementById("agent-home-promo-video");
         if (!trigger || !modal || !closeButton || !video || typeof modal.showModal !== "function") {
-            return () => {};
+            return {
+                open: () => false,
+                close: () => {},
+            };
         }
 
         let returnFocus = null;
@@ -182,18 +185,37 @@
             returnFocus = null;
         };
 
-        trigger.addEventListener("click", () => {
+        const openModal = (focusTarget = document.activeElement) => {
             if (modal.open) {
-                return;
+                return true;
             }
-            returnFocus = document.activeElement;
-            modal.showModal();
+            if (focusTarget instanceof HTMLIFrameElement) {
+                const frameWidth = focusTarget.getBoundingClientRect().width;
+                modal.style.setProperty(
+                    "--promo-title-size",
+                    frameWidth <= 520 ? "1.2rem" : "1.35rem",
+                );
+            } else {
+                modal.style.removeProperty("--promo-title-size");
+            }
+            returnFocus = focusTarget instanceof HTMLElement ? focusTarget : null;
+            try {
+                modal.showModal();
+            } catch (error) {
+                returnFocus = null;
+                return false;
+            }
             trigger.setAttribute("aria-expanded", "true");
             closeButton.focus();
             const playback = video.play();
             if (playback && typeof playback.catch === "function") {
                 playback.catch(() => {});
             }
+            return true;
+        };
+
+        trigger.addEventListener("click", () => {
+            openModal(document.activeElement);
         });
 
         closeButton.addEventListener("click", closeModal);
@@ -210,7 +232,10 @@
             closeModal();
         });
 
-        return closeModal;
+        return {
+            open: openModal,
+            close: closeModal,
+        };
     };
 
     const renderIcons = () => {
@@ -349,8 +374,12 @@
     const initialize = () => {
         renderIcons();
         initializeFirstPrompt();
-        const closePromoVideo = initializePromoVideo();
-        initializeAgentHome(closePromoVideo);
+        const promoVideo = initializePromoVideo();
+        window.EoswosPromoVideo = Object.freeze({
+            open: promoVideo.open,
+            close: promoVideo.close,
+        });
+        initializeAgentHome(promoVideo.close);
     };
 
     initialize();
