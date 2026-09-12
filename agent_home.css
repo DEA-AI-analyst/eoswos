@@ -430,7 +430,7 @@
 .agent-home__promo-player {
     position: relative;
     padding: 12px;
-    background: #020817;
+    background: #ffffff;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 16px;
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
@@ -438,7 +438,7 @@
 
 .agent-home__promo-title {
     margin: 0 44px 10px 2px;
-    color: #ffffff;
+    color: #000000;
     font-size: var(--promo-title-size, 1.35rem);
     font-weight: 800;
     line-height: 1.35;
