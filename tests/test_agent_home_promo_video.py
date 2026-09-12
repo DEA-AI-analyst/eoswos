@@ -93,6 +93,14 @@ def test_modal_uses_the_supplied_video_and_required_controls() -> None:
     assert ".agent-home__promo-modal::backdrop" in HOME_CSS
 
 
+def test_modal_is_larger_on_desktop_and_keeps_the_mobile_fit_rule() -> None:
+    modal = _css_block(".agent-home__promo-modal")
+
+    assert "width: min(1200px, calc(100vw - 48px));" in modal
+    assert "width: calc(100vw - 32px);" in HOME_CSS
+    assert "aspect-ratio: 16 / 9;" in HOME_CSS
+
+
 def test_modal_close_pauses_resets_and_handles_escape() -> None:
     assert "modal.showModal()" in HOME_JS
     assert "video.play()" in HOME_JS

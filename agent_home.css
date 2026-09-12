@@ -350,7 +350,7 @@
 }
 
 .agent-home__promo-modal {
-    width: min(960px, calc(100vw - 48px));
+    width: min(1200px, calc(100vw - 48px));
     max-width: none;
     max-height: calc(100vh - 48px);
     margin: auto;
