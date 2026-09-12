@@ -112,4 +112,4 @@ def test_home_return_invalidates_cross_origin_mcore_route_before_reopen() -> Non
     assert "frameRouteInvalidated || frame.src !== targetSource" in HOME_JS
     assert "frameRouteInvalidated = false" in HOME_JS
     assert "showHome({ updateHistory: false, invalidateFrameRoute: false })" in HOME_JS
-    assert "agent_home.js?v=20260912-promo-video" in INDEX
+    assert "agent_home.js?v=20260912-promo-video-white" in INDEX

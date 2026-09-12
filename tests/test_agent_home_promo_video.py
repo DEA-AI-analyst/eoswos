@@ -19,13 +19,13 @@ def _css_block(selector: str) -> str:
     return HOME_CSS.split(f"{selector} {{", 1)[1].split("}", 1)[0]
 
 
-def test_supplied_promo_assets_are_preserved_exactly() -> None:
+def test_promo_artwork_uses_the_approved_white_background_asset() -> None:
     image = ROOT / "assets" / "EosWos_Promo_Button.png"
     video = ROOT / "assets" / "EosWos_Demo.mp4"
 
-    assert image.stat().st_size == 104_208
+    assert image.stat().st_size == 94_237
     assert video.stat().st_size == 12_008_438
-    assert _sha256(image) == "BF2EE8AE62187FF2966296EF39539BCB7D888E5E36808DBE97BF2883B9491C0A"
+    assert _sha256(image) == "9441CC6446CE417A7BD300B05344371011F18437DD7B51325C1AF16ACCCFA5BB"
     assert _sha256(video) == "189BC695B1817444480CEE8AAC5672909679047731BCF7108FCC27468277D6BD"
 
 
@@ -39,7 +39,9 @@ def test_promo_button_is_inside_the_home_prompt_card() -> None:
 
     assert 'id="agent-home-promo-trigger"' in prompt
     assert 'aria-label="EosWos 홍보영상 재생"' in prompt
-    assert 'src="./assets/EosWos_Promo_Button.png"' in prompt
+    assert 'src="./assets/EosWos_Promo_Button.png?v=20260912-white-background"' in prompt
+    assert '<span>🎞️</span>' in prompt
+    assert '<span>Video</span>' in prompt
     assert "data-mcore-route" not in prompt
     assert HTML.count('id="agent-home-promo-trigger"') == 1
 
@@ -62,13 +64,19 @@ def test_outer_card_and_input_heights_remain_the_release_values() -> None:
 
 
 def test_only_the_prompt_width_is_reallocated_for_the_promo_image() -> None:
+    shared_heading_grid = HOME_CSS.split(
+        ".agent-home__first-prompt-heading,",
+        1,
+    )[1].split("}", 1)[0]
     layout = _css_block(".agent-home__first-prompt-layout")
     trigger = _css_block(".agent-home__promo-trigger")
     image = _css_block(".agent-home__promo-trigger img")
 
+    assert "grid-template-columns: minmax(0, 1fr) 1px 130px;" in shared_heading_grid
     assert "grid-template-columns: minmax(0, 1fr) 1px 130px;" in layout
     assert "width: 130px;" in trigger
     assert "height: 50px;" in trigger
+    assert "background: #ffffff;" in trigger
     assert "object-fit: contain;" in image
     assert "transform: scale(1.02);" in HOME_CSS
 

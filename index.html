@@ -24,11 +24,11 @@
 
     <meta name="naver-site-verification" content="ccad66f9c69093825b52c06ba44f369b1f2e4f2b" />
 
-    <link rel="stylesheet" href="./agent_home.css?v=20260912-promo-video" />
+    <link rel="stylesheet" href="./agent_home.css?v=20260912-promo-video-white" />
     <link rel="stylesheet" href="./ai_widget.css?v=20260828-agent-home-polish" />
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="./agent_home_first_prompt.js?v=20260831-first-prompt" defer></script>
-    <script src="./agent_home.js?v=20260912-promo-video" defer></script>
+    <script src="./agent_home.js?v=20260912-promo-video-white" defer></script>
     <script src="./ai_widget.js?v=20260901-panel-state" defer></script>
 
     <style>
@@ -155,9 +155,16 @@
 
             <section class="agent-home__first-prompt" aria-labelledby="agent-home-first-prompt-title">
                 <form id="agent-home-first-prompt-form" autocomplete="off" novalidate>
-                    <label id="agent-home-first-prompt-title" for="agent-home-first-prompt-input">
-                        🏠 Agent Home
-                    </label>
+                    <div class="agent-home__first-prompt-heading">
+                        <label id="agent-home-first-prompt-title" for="agent-home-first-prompt-input">
+                            🏠 Agent Home
+                        </label>
+                        <span aria-hidden="true"></span>
+                        <span class="agent-home__promo-label" aria-hidden="true">
+                            <span>🎞️</span>
+                            <span>Video</span>
+                        </span>
+                    </div>
                     <div class="agent-home__first-prompt-layout">
                         <div class="agent-home__first-prompt-control">
                             <input
@@ -180,7 +187,7 @@
                             aria-label="EosWos 홍보영상 재생"
                             aria-controls="agent-home-promo-modal"
                             aria-expanded="false">
-                            <img src="./assets/EosWos_Promo_Button.png" alt="" draggable="false" />
+                            <img src="./assets/EosWos_Promo_Button.png?v=20260912-white-background" alt="" draggable="false" />
                         </button>
                     </div>
                     <p id="agent-home-first-prompt-status" role="status" aria-live="polite" hidden></p>
