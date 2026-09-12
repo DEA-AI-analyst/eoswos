@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import copy
 import html
 import inspect
@@ -100,6 +101,8 @@ st.set_page_config(
 
 APP_DIR = Path(__file__).resolve().parent
 CODE_PATH = APP_DIR / "code.xlsx"
+PROMO_IMAGE_PATH = APP_DIR / "assets" / "EosWos_Promo_Button.png"
+PROMO_VIDEO_PATH = APP_DIR / "assets" / "EosWos_Demo.mp4"
 AGENT_HOME_CONSUMED_REQUEST_IDS_LIMIT = 64
 AGENT_HOME_CONSUMED_REQUEST_IDS_KEY = "_agent_home_prompt_consumed_request_ids"
 AGENT_HOME_LEGACY_REQUEST_ID_KEY = "_agent_home_first_prompt_request_id"
@@ -164,6 +167,11 @@ def _issuer_options() -> tuple[tuple[str, str], ...]:
         return _load_issuer_options(str(CODE_PATH), CODE_PATH.stat().st_mtime_ns)
     except Exception:
         return ()
+
+
+def _image_data_uri(path: Path) -> str:
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 st.markdown(
@@ -332,7 +340,7 @@ st.markdown(
             margin-bottom: 0.55rem;
         }
         .chat-panel-header {
-            padding-right: 5.4rem;
+            padding-right: 0;
             padding-bottom: 0;
         }
         .chat-title {
@@ -462,6 +470,82 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.markdown(
+    f"""
+    <style>
+        .st-key-eagent_promo_header {{
+            position: relative;
+            min-height: 4.25rem;
+            margin-bottom: 0.55rem;
+            padding-right: calc(5.4rem + 138px);
+            box-sizing: border-box;
+        }}
+        .st-key-eagent_promo_header
+        [data-testid="stElementContainer"]:has(.chat-panel-header) {{
+            margin-bottom: 0;
+        }}
+        .st-key-eagent_promo_trigger {{
+            position: absolute !important;
+            right: 5.4rem;
+            bottom: -0.65rem;
+            width: 130px !important;
+            z-index: 2;
+        }}
+        .st-key-eagent_promo_trigger button {{
+            width: 130px !important;
+            min-width: 130px !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 10px !important;
+            background-color: #ffffff !important;
+            background-image: url("{_image_data_uri(PROMO_IMAGE_PATH)}") !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            background-size: contain !important;
+            box-shadow: none !important;
+            color: transparent !important;
+            font-size: 0 !important;
+            line-height: 0 !important;
+            cursor: pointer !important;
+            transition: transform 140ms ease !important;
+        }}
+        .st-key-eagent_promo_trigger button:hover {{
+            border: 0 !important;
+            background-color: #ffffff !important;
+            transform: scale(1.02);
+        }}
+        .st-key-eagent_promo_trigger button:focus-visible {{
+            outline: 3px solid rgba(47, 119, 207, 0.35) !important;
+            outline-offset: 2px !important;
+        }}
+        @media (max-width: 520px) {{
+            .st-key-eagent_promo_header {{
+                min-height: 4rem;
+                padding-right: calc(4.6rem + 96px);
+            }}
+            .st-key-eagent_promo_trigger {{
+                right: 4.6rem;
+                width: 88px !important;
+            }}
+            .st-key-eagent_promo_trigger button {{
+                width: 88px !important;
+                min-width: 88px !important;
+                height: 34px !important;
+                min-height: 34px !important;
+            }}
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .st-key-eagent_promo_trigger button {{
+                transition: none !important;
+            }}
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def _setting(name: str) -> str:
     try:
@@ -509,6 +593,23 @@ def _format_rank(value: Any) -> str:
 
 def _escape(value: Any) -> str:
     return html.escape(str(value if value not in (None, "") else "-"))
+
+
+@st.dialog(
+    "EosWos 홍보영상",
+    width="large",
+    dismissible=True,
+    on_dismiss="rerun",
+)
+def _render_eagent_promo_video() -> None:
+    """Render the shared Home promotion video in a fresh modal player."""
+    st.video(
+        str(PROMO_VIDEO_PATH),
+        format="video/mp4",
+        start_time=0,
+        autoplay=True,
+        width="stretch",
+    )
 
 
 def _render_result(result: dict[str, Any], elapsed_ms: float) -> None:
@@ -1283,20 +1384,27 @@ if health.get("status") != "ready":
     st.warning("평가 서비스를 준비 중입니다. 잠시 후 다시 확인해 주세요.")
     st.stop()
 
-st.markdown(
-    f"""
-    <div class="chat-panel-header">
-        <div class="chat-title">
-            <strong>EosWos AI Agent</strong>
-            <span>메자닌 신규업체 단건평가</span>
+with st.container(key="eagent_promo_header"):
+    st.markdown(
+        f"""
+        <div class="chat-panel-header">
+            <div class="chat-title">
+                <strong>EosWos AI Agent</strong>
+                <span>메자닌 신규업체 단건평가</span>
+            </div>
+            <div class="api-ready">
+                API ready · {_escape(health.get("model_mode", "-"))}
+            </div>
         </div>
-        <div class="api-ready">
-            API ready · {_escape(health.get("model_mode", "-"))}
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
+    if st.button(
+        "EosWos 홍보영상 재생",
+        key="eagent_promo_trigger",
+        help="EosWos 홍보영상 재생",
+    ):
+        _render_eagent_promo_video()
 
 _ensure_session()
 today_seoul = datetime.now(ZoneInfo("Asia/Seoul")).date()

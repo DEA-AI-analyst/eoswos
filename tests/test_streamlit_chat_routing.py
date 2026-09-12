@@ -446,8 +446,22 @@ def test_completed_evaluation_shows_new_evaluation_and_chat_input(monkeypatch) -
 
     assert not at.exception
     labels = [button.label for button in at.button]
-    assert labels == ["AI 평가보고서", "새 평가"]
+    assert labels == ["EosWos 홍보영상 재생", "AI 평가보고서", "새 평가"]
     assert len(at.chat_input) == 1
+
+
+def test_promo_button_opens_the_native_video_dialog(monkeypatch) -> None:
+    at, _ = _app(monkeypatch)
+    promo_button = next(
+        button
+        for button in at.button
+        if button.label == "EosWos 홍보영상 재생"
+    )
+
+    promo_button.click().run(timeout=10)
+
+    assert not at.exception
+    assert len(at.get("video")) == 1
 
 
 @pytest.mark.parametrize("prompt", ("평가.", "검토", "심사"))
@@ -596,7 +610,11 @@ def test_ai_panel_header_uses_normal_flow_and_reserves_control_space() -> None:
     assert "position: sticky !important;" not in source
     assert "margin-bottom: 0.55rem;" in source
     assert ".chat-panel-header" in source
-    assert "padding-right: 5.4rem;" in source
+    assert "padding-right: calc(5.4rem + 138px);" in source
+    assert 'with st.container(key="eagent_promo_header"):' in source
+    assert 'key="eagent_promo_trigger"' in source
+    assert "bottom: -0.65rem;" in source
+    assert "right: 5.4rem;" in source
     assert "<strong>EosWos AI Agent</strong>" in source
     assert "안녕하세요. EosWos AI Agent입니다. 무엇을 도와드릴까요?" in source
     assert "padding-bottom: 0;" in source

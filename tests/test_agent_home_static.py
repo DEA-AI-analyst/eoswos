@@ -113,3 +113,8 @@ def test_home_return_invalidates_cross_origin_mcore_route_before_reopen() -> Non
     assert "frameRouteInvalidated = false" in HOME_JS
     assert "showHome({ updateHistory: false, invalidateFrameRoute: false })" in HOME_JS
     assert "agent_home.js?v=20260912-promo-video-white" in INDEX
+
+
+def test_home_section_quote_matches_the_approved_copy() -> None:
+    assert "시간은 화살이고, 미래는 자산이다. - 멋진 신세계 -" in INDEX
+    assert "메자닌 평가와 사후관리" not in INDEX
