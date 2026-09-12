@@ -155,7 +155,7 @@
         const closeButton = document.getElementById("agent-home-promo-close");
         const video = document.getElementById("agent-home-promo-video");
         if (!trigger || !modal || !closeButton || !video || typeof modal.showModal !== "function") {
-            return;
+            return () => {};
         }
 
         let returnFocus = null;
@@ -209,6 +209,8 @@
             event.stopImmediatePropagation();
             closeModal();
         });
+
+        return closeModal;
     };
 
     const renderIcons = () => {
@@ -221,7 +223,7 @@
         }
     };
 
-    const initializeAgentHome = () => {
+    const initializeAgentHome = (closePromoVideo = () => {}) => {
         const home = document.getElementById("agent-home");
         const frameWrap = document.getElementById("mcore-frame-wrap");
         const frame = document.getElementById("mcore-frame");
@@ -291,6 +293,7 @@
         };
 
         const showMcore = (route, { updateHistory = true } = {}) => {
+            closePromoVideo();
             const safeRoute = normalizeRoute(route);
             const targetSource = buildMcoreUrl(safeRoute);
             const shouldNavigate = frameRouteInvalidated || frame.src !== targetSource;
@@ -346,8 +349,8 @@
     const initialize = () => {
         renderIcons();
         initializeFirstPrompt();
-        initializePromoVideo();
-        initializeAgentHome();
+        const closePromoVideo = initializePromoVideo();
+        initializeAgentHome(closePromoVideo);
     };
 
     initialize();

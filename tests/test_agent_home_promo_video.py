@@ -95,6 +95,17 @@ def test_modal_close_pauses_resets_and_handles_escape() -> None:
     assert "trigger.setAttribute(\"aria-expanded\", \"false\")" in HOME_JS
 
 
+def test_leaving_home_closes_and_resets_an_open_promo_video() -> None:
+    show_mcore = HOME_JS.split("const showMcore", 1)[1].split(
+        "routeButtons.forEach",
+        1,
+    )[0]
+
+    assert "closePromoVideo();" in show_mcore
+    assert "const closePromoVideo = initializePromoVideo();" in HOME_JS
+    assert "initializeAgentHome(closePromoVideo);" in HOME_JS
+
+
 def test_existing_home_routes_are_unchanged() -> None:
     routes = re.findall(r'data-mcore-route="([^"]+)"', HTML)
     assert routes == ["new_evaluation", "monitoring", "overview", "dea", "ml"]
