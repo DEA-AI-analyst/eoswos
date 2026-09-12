@@ -63,6 +63,27 @@ def test_outer_card_and_input_heights_remain_the_release_values() -> None:
     assert "height: 50px;" in submit
 
 
+def test_prompt_guidance_uses_a_non_interactive_marquee_overlay() -> None:
+    input_markup = HTML.split(
+        '<div class="agent-home__first-prompt-input-shell">',
+        1,
+    )[1].split('<button class="agent-home__first-prompt-submit"', 1)[0]
+
+    assert 'aria-describedby="agent-home-first-prompt-guidance"' in input_markup
+    assert 'class="agent-home__sr-only" id="agent-home-first-prompt-guidance"' in input_markup
+    assert 'placeholder=" "' in input_markup
+    assert 'class="agent-home__prompt-marquee" aria-hidden="true"' in input_markup
+    assert "대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." in input_markup
+    assert "pointer-events: none;" in _css_block(".agent-home__prompt-marquee")
+    assert "overflow: hidden;" in _css_block(".agent-home__prompt-marquee")
+    assert "@keyframes agent-home-prompt-marquee" in HOME_CSS
+    assert "input:not(:placeholder-shown) + .agent-home__prompt-marquee" in HOME_CSS
+    assert "input:disabled + .agent-home__prompt-marquee" in HOME_CSS
+    assert "animation-play-state: paused;" in HOME_CSS
+    assert "color: #64748b;" in _css_block(".agent-home__prompt-marquee")
+    assert "@media (prefers-reduced-motion: reduce)" in HOME_CSS
+
+
 def test_only_the_prompt_width_is_reallocated_for_the_promo_image() -> None:
     shared_heading_grid = HOME_CSS.split(
         ".agent-home__first-prompt-heading,",

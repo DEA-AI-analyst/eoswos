@@ -28,7 +28,7 @@ def test_agent_home_exposes_exactly_five_allowlisted_routes() -> None:
 def test_agent_home_uses_only_confirmed_engine_copy() -> None:
     home = _home_markup()
     assert "M-CORE AI Evaluation Engine" in home
-    assert "risk DEA • dual ML • Hybrid" in home
+    assert "<small>risk DEA • dual ML • Hybrid Framework</small>" in home
 
     unsupported_claims = (
         "Connected",
