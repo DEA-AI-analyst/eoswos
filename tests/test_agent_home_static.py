@@ -116,6 +116,14 @@ def test_home_return_invalidates_cross_origin_mcore_route_before_reopen() -> Non
     assert "ai_widget.js?v=20260913-promo-parent-modal" in INDEX
 
 
-def test_home_section_quote_matches_the_approved_copy() -> None:
-    assert "시간은 화살이고, 미래는 자산이다. - 멋진 신세계 -" in INDEX
+def test_primary_work_section_heading_does_not_repeat_the_prompt_quote() -> None:
+    primary_section = INDEX.split('aria-labelledby="primary-work-title"', 1)[1].split(
+        '<div class="agent-home__primary-grid">', 1
+    )[0]
+    section_heading = primary_section.split(
+        '<div class="agent-home__section-heading">', 1
+    )[1].split("</div>", 1)[0]
+
+    assert 'id="primary-work-title"' in section_heading
+    assert "시간은 화살이고" not in section_heading
     assert "메자닌 평가와 사후관리" not in INDEX

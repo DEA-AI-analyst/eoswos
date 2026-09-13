@@ -73,7 +73,7 @@ def test_prompt_guidance_uses_a_non_interactive_marquee_overlay() -> None:
     assert 'class="agent-home__sr-only" id="agent-home-first-prompt-guidance"' in input_markup
     assert 'placeholder=" "' in input_markup
     assert 'class="agent-home__prompt-marquee" aria-hidden="true"' in input_markup
-    assert "궁금한 건 참지 말고 질문하세요. 대화는 AI 패널에서 진행됩니다. 인증정보 • 계좌정보 등 민감정보는 입력하지 마세요." in input_markup
+    assert "궁금한 건 참지 말고 질문하세요. 시간은 화살이고, 미래는 자산이다. - 멋진 신세계 -" in input_markup
     assert "pointer-events: none;" in _css_block(".agent-home__prompt-marquee")
     assert "overflow: hidden;" in _css_block(".agent-home__prompt-marquee")
     assert "@keyframes agent-home-prompt-marquee" in HOME_CSS
