@@ -192,9 +192,7 @@ def validate_draft(values: dict[str, Any], today: date | None = None) -> list[st
         )
 
     try:
-        issue_date = date.fromisoformat(str(values.get("issue_date") or ""))
-        if issue_date > (today or date.today()):
-            errors.append("발행일은 오늘 이후일 수 없습니다.")
+        date.fromisoformat(str(values.get("issue_date") or ""))
     except ValueError:
         errors.append("발행일은 YYYY-MM-DD 형식이어야 합니다.")
 

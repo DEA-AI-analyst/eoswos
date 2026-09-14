@@ -1,6 +1,8 @@
 import json
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -31,7 +33,12 @@ class _FakeResponse:
 
 
 def _app(monkeypatch, bridge_payload=None, bridge_renderer=None):
-    calls = {"health": 0, "chatbase": 0, "evaluate": 0}
+    calls = {
+        "health": 0,
+        "chatbase": 0,
+        "evaluate": 0,
+        "evaluate_payloads": [],
+    }
 
     def fake_urlopen(request, timeout):
         url = request.full_url
@@ -47,6 +54,9 @@ def _app(monkeypatch, bridge_payload=None, bridge_renderer=None):
             return _FakeResponse({"text": "Chatbase 테스트 답변"})
         if url.endswith("/evaluate/single"):
             calls["evaluate"] += 1
+            calls["evaluate_payloads"].append(
+                json.loads(request.data.decode("utf-8"))
+            )
             return _FakeResponse({"m_grade": "M3"})
         raise AssertionError(f"unexpected URL: {url}")
 
@@ -74,6 +84,50 @@ def _bridge_payload(prompt: str, request_id: str = "0d830966-c9a7-4356-9498-b96a
         "source": "agent_home_first_prompt",
         "attempt": 1,
     }
+
+
+def _valid_evaluation_draft(issue_date: str) -> dict:
+    return {
+        "product_type": "CB/BW/EB(자기주식)",
+        "issuer_stock_code": "000720",
+        "stock_code": "000720",
+        "credit_rating": "AA-",
+        "conversion_price": 150607,
+        "call_rate": 0.0,
+        "ttm_years": 5.0,
+        "issue_date": issue_date,
+    }
+
+
+@pytest.mark.parametrize(
+    "issue_date",
+    (
+        datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat(),
+        "2099-12-31",
+    ),
+)
+def test_valid_issue_date_reaches_api_unchanged(monkeypatch, issue_date) -> None:
+    at, calls = _app(monkeypatch)
+    at.session_state["evaluation_draft"] = _valid_evaluation_draft(issue_date)
+    at.session_state["chat_stage"] = "confirming"
+
+    at.run(timeout=10)
+
+    assert not at.exception
+    assert calls["evaluate"] == 1
+    assert calls["evaluate_payloads"] == [
+        {
+            "product_type": "CB/BW/EB(자기주식)",
+            "issuer_stock_code": "000720",
+            "stock_code": "000720",
+            "credit_rating": "AA-",
+            "conversion_price": 150607,
+            "call_rate": 0.0,
+            "ttm_years": 5.0,
+            "issue_date": issue_date,
+        }
+    ]
+    assert at.session_state["current_evaluation_input"]["issue_date"] == issue_date
 
 
 

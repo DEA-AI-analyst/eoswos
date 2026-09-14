@@ -1341,7 +1341,6 @@ def _render_direct_input(client: MezzApiClient, today_seoul: Any) -> None:
         issue_date = st.date_input(
             "발행일",
             value=None,
-            max_value=today_seoul,
             format="YYYY-MM-DD",
             key="direct_issue_date",
         )

@@ -32,6 +32,29 @@ def test_structured_self_stock_payload_is_preserved() -> None:
     assert build_api_payload(values, today=date(2026, 8, 24)) == values
 
 
+@pytest.mark.parametrize("issue_date", ("2026-09-15", "2026-09-16"))
+def test_valid_iso_issue_date_is_delegated_unchanged(issue_date: str) -> None:
+    values = _valid_self_stock()
+    values["issue_date"] = issue_date
+
+    assert validate_draft(values, today=date(2026, 9, 15)) == []
+    assert (
+        build_api_payload(values, today=date(2026, 9, 15))["issue_date"]
+        == issue_date
+    )
+
+
+def test_malformed_issue_date_still_fails_local_syntax_validation() -> None:
+    values = _valid_self_stock()
+    values["issue_date"] = "2026-02-30"
+
+    assert validate_draft(values, today=date(2026, 9, 15)) == [
+        "발행일은 YYYY-MM-DD 형식이어야 합니다."
+    ]
+    with pytest.raises(ValueError, match="YYYY-MM-DD"):
+        build_api_payload(values, today=date(2026, 9, 15))
+
+
 def test_third_party_contract_requires_distinct_codes() -> None:
     values = _valid_self_stock()
     values.update(
