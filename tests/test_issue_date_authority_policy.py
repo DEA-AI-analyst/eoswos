@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_direct_issue_date_widget_has_no_eagent_maximum_gate() -> None:
+def test_direct_issue_date_widget_caps_calendar_at_seoul_today() -> None:
     source = (ROOT / "ai_single_evaluation.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     issue_date_widgets = [
@@ -20,9 +20,14 @@ def test_direct_issue_date_widget_has_no_eagent_maximum_gate() -> None:
     ]
 
     assert len(issue_date_widgets) == 1
-    assert "max_value" not in {
-        keyword.arg for keyword in issue_date_widgets[0].keywords
-    }
+    max_value_keywords = [
+        keyword
+        for keyword in issue_date_widgets[0].keywords
+        if keyword.arg == "max_value"
+    ]
+    assert len(max_value_keywords) == 1
+    assert isinstance(max_value_keywords[0].value, ast.Name)
+    assert max_value_keywords[0].value.id == "today_seoul"
 
 
 def test_contract_has_no_eagent_future_date_rejection() -> None:

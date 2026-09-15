@@ -150,9 +150,11 @@ def test_general_question_calls_chatbase_only(monkeypatch) -> None:
 
 
 def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatch) -> None:
+    today_before = datetime.now(ZoneInfo("Asia/Seoul")).date()
     at, calls = _app(monkeypatch)
     prompt = "현대건설 000720 AA- 전환가 150607 만기 5년으로 평가해줘"
     at.chat_input[0].set_value(prompt).run(timeout=10)
+    today_after = datetime.now(ZoneInfo("Asia/Seoul")).date()
 
     assert not at.exception
     assert calls["chatbase"] == 1
@@ -160,6 +162,10 @@ def test_evaluation_intent_opens_form_without_extraction_or_api_calls(monkeypatc
     assert at.session_state["panel_mode"] == "메자닌 평가"
     assert dict(at.session_state["evaluation_draft"]) == {}
     assert any(button.label == "평가시작" for button in at.button)
+    issue_date_widget = next(
+        widget for widget in at.date_input if widget.label == "발행일"
+    )
+    assert issue_date_widget.max in {today_before, today_after}
 
 
 @pytest.mark.parametrize(
