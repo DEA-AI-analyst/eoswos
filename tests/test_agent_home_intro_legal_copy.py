@@ -14,6 +14,14 @@ def test_agent_home_intro_uses_requested_framework_and_legal_copy() -> None:
     assert "AI Decision Support Framework" in html
     assert "AI Decision Platform" not in html
     assert "컴퓨터프로그램저작물 제C-2026-036575호" in html
+    registration = html.split('<div class="agent-home__registration">', 1)[1].split(
+        "</div>\n        </header>", 1
+    )[0]
+    assert "<div>컴퓨터프로그램저작물 제C-2026-036575호</div>" in registration
+    assert "<div>BM특허 출원완료</div>" in registration
+    assert (
+        "컴퓨터프로그램저작물 제C-2026-036575호 | BM특허 출원완료" in html
+    )
     assert "<small>risk DEA • dual ML • Hybrid Framework</small>" in html
     assert "Copyright 2026. All rights reserved." in html
     assert "agent-home__registration" in html
