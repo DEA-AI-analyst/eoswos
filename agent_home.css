@@ -136,7 +136,7 @@
     max-width: min(330px, 38vw);
     margin-left: auto;
     color: #c9d6e8;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     line-height: 1.35;
     text-align: right;
@@ -929,7 +929,7 @@ body.agent-home-active .site-hit-counter {
 
     .agent-home__registration {
         max-width: 190px;
-        font-size: 10px;
+        font-size: 11px;
         line-height: 1.25;
     }
 
