@@ -2,24 +2,6 @@
 
 메자닌 후보군 선별 및 등급평가 서비스의 공개 웹사이트와 AI 패널 저장소입니다.
 
-## 창건이 확장 개발 시작점
-
-대부분의 AI 패널 기능은 `ai_single_evaluation.py`에서 개발합니다.
-
-| 개발 목적 | 수정할 파일 |
-|---|---|
-| AI 패널 화면, 버튼, 입력폼, 결과 표시 | `ai_single_evaluation.py` |
-| 자연어 질문의 TYPE A~D 의도 분류 | `chat_intent_router.py` |
-| Chatbase REST 요청, 인증, 오류 정제 | `chatbase_client.py` |
-| 확정 평가결과의 읽기 전용 설명 컨텍스트 | `chat_evaluation_context.py` |
-| 정형 평가폼의 검증과 API payload 계약 | `mezz_evaluation_contract.py` |
-| 평가 API 주소, 요청 또는 응답 처리 변경 | `mezz_api_client.py` |
-| eoswos.com의 풍선 버튼과 패널 열기/닫기 변경 | `ai_widget.js` |
-| Agent Home 질문 전달 상태와 메시지 계약 | `agent_home_first_prompt.js` |
-| E-AGENT Agent Home 질문 payload 검증과 Streamlit component | `agent_home_prompt_bridge.py`, `initial_prompt_bridge/index.html` |
-| 풍선과 패널의 크기, 색상, 위치 변경 | `ai_widget.css` |
-| eoswos.com의 iframe, SEO, 분석 코드 변경 | `index.html` |
-
 ## 파일 설명
 
 | 파일 | 역할 |
@@ -42,7 +24,7 @@
 | `robots.txt` | 검색엔진 크롤링 허용 범위와 사이트맵 주소를 정의합니다. |
 | `sitemap.xml` | 검색엔진에 공개할 대표 URL을 제공합니다. |
 | `.gitignore` | 캐시, 가상환경, `.env`, `secrets.toml`이 GitHub에 올라가지 않도록 차단합니다. |
-| `README.md` | 저장소 구조와 확장 개발 방법을 설명하는 현재 문서입니다. |
+| `README.md` | 현재 저장소 구성과 실행·배포 방식을 설명합니다. |
 
 ## 실행과 배포 구조
 
@@ -56,14 +38,9 @@
 8. `main` 브랜치에 push하면 연결된 GitHub Pages와 Streamlit Cloud가 변경사항을 다시 배포합니다.
 9. Agent Home 질문은 AI 패널이 닫혀 있을 때마다 새 request ID와 함께 strict-origin `postMessage`로 전달되며, 패널이 열려 있는 동안의 대화는 기존 AI 패널에서 계속됩니다.
 
-## Agent Home 릴리스 메모
+## 버전 관리
 
-다음 Production 릴리스에는 Agent Home 관련 변경을 함께 기록합니다.
-
-- `bf65596`: 반응형 Agent Home 복귀 버튼 개선
-- `ab80f52`: Home 버튼을 AI Agent 버튼 폭과 정렬
-- `b7f9589`: AI 패널이 닫혀 있을 때 Home 질문 입력을 다시 활성화하고, 패널이 열려 있는 동안만 입력 비활성화
-- `db3c413`: 첫 질문 ACK 이후에도 검증된 bridge 연결을 재사용하여 두 번째 질문을 즉시 전달
+소스 변경은 Git commit SHA로 관리합니다. `main` 변경 후 GitHub Pages와 Streamlit Cloud의 실제 반영 여부를 각각 확인한 SHA를 배포 기준점으로 기록합니다. 완료된 개발 이력은 Git 기록에 보존하고, 이 README에는 현재 구성과 운영 절차만 유지합니다.
 
 ## 자연어 라우팅
 
