@@ -17,7 +17,8 @@ def test_home_exposes_one_plain_text_prompt_without_get_field_name() -> None:
     assert 'autocomplete="off"' in input_markup
     assert "🏠 Agent Home" in HTML
     assert "메자닌 평가와 분석 방법을 질문해 주세요." not in HTML
-    assert "궁금한 건 참지 말고 질문하세요. 시간은 화살이고, 미래는 자산이다. - 멋진 신세계 -" in HTML
+    assert "궁금한 건 참지 말고 질문하세요." in HTML
+    assert "시간은 화살이고, 미래는 자산이다. - 멋진 신세계 -" not in HTML
     assert "agent-home-first-prompt-help" not in HTML
     assert 'id="agent-home-first-prompt-status"' in HTML
     assert "hidden></p>" in HTML
